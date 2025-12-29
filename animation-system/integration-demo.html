@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动画系统集成演示</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .game-area {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .canvas-container {
+            flex: 1;
+            text-align: center;
+        }
+        
+        canvas {
+            border: 2px solid #333;
+            background: linear-gradient(135deg, #001122, #002244);
+        }
+        
+        .game-ui {
+            width: 300px;
+            background: #222;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        .timer-display {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+            padding: 15px;
+            background: #333;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        .timer-running { color: #51cf66; }
+        .timer-paused { color: #ff6b6b; }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 12px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            background: #333;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .status h4 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+        
+        .integration-info {
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 1px solid #333;
+        }
+        
+        .integration-info h3 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        
+        .code-example {
+            background: #000;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+        
+        .highlight {
+            color: #ffd700;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>动画系统集成演示</h1>
+        <p>这个演示展示了如何将动画系统集成到人生旅程游戏中，实现出生动画与游戏计时器的协调控制。</p>
+        
+        <div class="game-area">
+            <div class="canvas-container">
+                <canvas id="gameCanvas" width="800" height="600"></canvas>
+            </div>
+            
+            <div class="game-ui">
+                <div class="timer-display timer-running" id="timerDisplay">
+                    游戏时间: <span id="gameTime">60.0</span>s
+                </div>
+                
+                <div class="controls">
+                    <button id="startGameBtn">开始游戏 (播放出生动画)</button>
+                    <button id="pauseGameBtn" disabled>暂停游戏</button>
+                    <button id="resumeGameBtn" disabled>恢复游戏</button>
+                    <button id="resetGameBtn">重置游戏</button>
+                </div>
+                
+                <div class="status">
+                    <h4>游戏状态</h4>
+                    <div>状态: <span id="gameStatus">准备开始</span></div>
+                    <div>计时器: <span id="timerStatus">停止</span></div>
+                    <div>动画: <span id="animationStatus">无</span></div>
+                </div>
+                
+                <div class="status">
+                    <h4>动画信息</h4>
+                    <div>当前阶段: <span id="animationPhase">无</span></div>
+                    <div>动画时间: <span id="animationTime">0.0s</span></div>
+                    <div>角色状态: <span id="characterStatus">未显现</span></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="integration-info">
+            <h3>集成要点</h3>
+            <p>动画系统与主游戏的集成包含以下关键功能：</p>
+            
+            <h4>1. 游戏计时器控制</h4>
+            <div class="code-example">
+<span class="highlight">// 设置计时器控制回调</span>
+animationEngine.onGameTimerPause = () => {
+    gameTimer.pause();
+    console.log('游戏计时器已暂停');
+};
+
+animationEngine.onGameTimerResume = () => {
+    gameTimer.resume();
+    console.log('游戏计时器已恢复');
+};
+            </div>
+            
+            <h4>2. 出生动画播放</h4>
+            <div class="code-example">
+<span class="highlight">// 播放出生动画</span>
+async function startGame() {
+    await animationEngine.playBirthAnimation();
+    // 动画完成后，角色已显现，计时器已恢复
+    startGameplay();
+}
+            </div>
+            
+            <h4>3. 动画状态监控</h4>
+            <div class="code-example">
+<span class="highlight">// 监控动画状态</span>
+function updateGameState() {
+    const animation = animationEngine.currentAnimation;
+    if (animation) {
+        updateUI(animation.currentPhase, animation.currentTime);
+    }
+}
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 导入动画系统
+        import { AnimationEngine } from './core/AnimationEngine.js';
+        
+        // 获取DOM元素
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const startGameBtn = document.getElementById('startGameBtn');
+        const pauseGameBtn = document.getElementById('pauseGameBtn');
+        const resumeGameBtn = document.getElementById('resumeGameBtn');
+        const resetGameBtn = document.getElementById('resetGameBtn');
+        
+        const timerDisplay = document.getElementById('timerDisplay');
+        const gameTimeSpan = document.getElementById('gameTime');
+        const gameStatusSpan = document.getElementById('gameStatus');
+        const timerStatusSpan = document.getElementById('timerStatus');
+        const animationStatusSpan = document.getElementById('animationStatus');
+        const animationPhaseSpan = document.getElementById('animationPhase');
+        const animationTimeSpan = document.getElementById('animationTime');
+        const characterStatusSpan = document.getElementById('characterStatus');
+        
+        // 创建动画引擎
+        const animationEngine = new AnimationEngine(canvas, {
+            fps: 60,
+            quality: 'high'
+        });
+        
+        // 游戏状态
+        let gameState = 'ready'; // ready, playing, paused, animating
+        let gameTime = 60.0; // 游戏时间（秒）
+        let gameTimer = null;
+        let isTimerPaused = false;
+        
+        // 游戏计时器类
+        class GameTimer {
+            constructor(initialTime = 60) {
+                this.time = initialTime;
+                this.isRunning = false;
+                this.isPaused = false;
+                this.interval = null;
+            }
+            
+            start() {
+                if (this.isRunning) return;
+                
+                this.isRunning = true;
+                this.isPaused = false;
+                this.interval = setInterval(() => {
+                    if (!this.isPaused) {
+                        this.time -= 0.1;
+                        if (this.time <= 0) {
+                            this.time = 0;
+                            this.stop();
+                            onGameTimeUp();
+                        }
+                    }
+                }, 100);
+                
+                console.log('游戏计时器已启动');
+            }
+            
+            pause() {
+                this.isPaused = true;
+                console.log('游戏计时器已暂停');
+            }
+            
+            resume() {
+                this.isPaused = false;
+                console.log('游戏计时器已恢复');
+            }
+            
+            stop() {
+                this.isRunning = false;
+                this.isPaused = false;
+                if (this.interval) {
+                    clearInterval(this.interval);
+                    this.interval = null;
+                }
+                console.log('游戏计时器已停止');
+            }
+            
+            reset(time = 60) {
+                this.stop();
+                this.time = time;
+            }
+        }
+        
+        // 创建游戏计时器
+        gameTimer = new GameTimer(60);
+        
+        // 设置动画引擎的计时器控制回调
+        animationEngine.onGameTimerPause = () => {
+            gameTimer.pause();
+            isTimerPaused = true;
+            timerDisplay.className = 'timer-display timer-paused';
+        };
+        
+        animationEngine.onGameTimerResume = () => {
+            gameTimer.resume();
+            isTimerPaused = false;
+            timerDisplay.className = 'timer-display timer-running';
+        };
+        
+        // 游戏时间用完处理
+        function onGameTimeUp() {
+            gameState = 'ready';
+            gameStatusSpan.textContent = '游戏结束';
+            console.log('游戏时间用完！');
+        }
+        
+        // 开始游戏
+        async function startGame() {
+            try {
+                gameState = 'animating';
+                gameStatusSpan.textContent = '播放出生动画';
+                animationStatusSpan.textContent = '出生动画';
+                
+                // 禁用按钮
+                startGameBtn.disabled = true;
+                pauseGameBtn.disabled = true;
+                resumeGameBtn.disabled = true;
+                
+                console.log('开始游戏 - 播放出生动画');
+                
+                // 播放出生动画
+                await animationEngine.playBirthAnimation();
+                
+                // 动画完成后开始游戏
+                gameState = 'playing';
+                gameStatusSpan.textContent = '游戏进行中';
+                animationStatusSpan.textContent = '无';
+                characterStatusSpan.textContent = '已显现';
+                
+                // 启动游戏计时器
+                gameTimer.start();
+                
+                // 更新按钮状态
+                startGameBtn.disabled = true;
+                pauseGameBtn.disabled = false;
+                resumeGameBtn.disabled = true;
+                
+                console.log('出生动画完成，游戏开始');
+                
+            } catch (error) {
+                console.error('游戏启动失败:', error);
+                resetGame();
+            }
+        }
+        
+        // 暂停游戏
+        function pauseGame() {
+            if (gameState === 'playing') {
+                gameState = 'paused';
+                gameTimer.pause();
+                animationEngine.pauseAnimation();
+                
+                gameStatusSpan.textContent = '游戏暂停';
+                
+                pauseGameBtn.disabled = true;
+                resumeGameBtn.disabled = false;
+            }
+        }
+        
+        // 恢复游戏
+        function resumeGame() {
+            if (gameState === 'paused') {
+                gameState = 'playing';
+                gameTimer.resume();
+                animationEngine.resumeAnimation();
+                
+                gameStatusSpan.textContent = '游戏进行中';
+                
+                pauseGameBtn.disabled = false;
+                resumeGameBtn.disabled = true;
+            }
+        }
+        
+        // 重置游戏
+        function resetGame() {
+            gameState = 'ready';
+            gameTimer.reset(60);
+            animationEngine.stopAnimation();
+            
+            gameStatusSpan.textContent = '准备开始';
+            animationStatusSpan.textContent = '无';
+            animationPhaseSpan.textContent = '无';
+            animationTimeSpan.textContent = '0.0s';
+            characterStatusSpan.textContent = '未显现';
+            
+            startGameBtn.disabled = false;
+            pauseGameBtn.disabled = true;
+            resumeGameBtn.disabled = true;
+            
+            timerDisplay.className = 'timer-display timer-running';
+            
+            // 清空画布
+            drawBackground();
+        }
+        
+        // 更新UI
+        function updateUI() {
+            // 更新游戏时间显示
+            gameTimeSpan.textContent = gameTimer.time.toFixed(1);
+            
+            // 更新计时器状态
+            if (gameTimer.isRunning) {
+                if (gameTimer.isPaused || isTimerPaused) {
+                    timerStatusSpan.textContent = '暂停';
+                } else {
+                    timerStatusSpan.textContent = '运行';
+                }
+            } else {
+                timerStatusSpan.textContent = '停止';
+            }
+            
+            // 更新动画信息
+            const currentAnimation = animationEngine.currentAnimation;
+            if (currentAnimation) {
+                animationPhaseSpan.textContent = currentAnimation.currentPhase || '无';
+                animationTimeSpan.textContent = (currentAnimation.currentTime / 1000).toFixed(1) + 's';
+                
+                if (currentAnimation.characterOpacity > 0) {
+                    const opacity = Math.round(currentAnimation.characterOpacity * 100);
+                    characterStatusSpan.textContent = `显现中 (${opacity}%)`;
+                }
+            }
+        }
+        
+        // 绘制背景
+        function drawBackground() {
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#001122');
+            gradient.addColorStop(1, '#002244');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制游戏标题
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.font = '24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('人生旅程游戏', canvas.width / 2, 50);
+            
+            if (gameState === 'ready') {
+                ctx.font = '16px Arial';
+                ctx.fillText('点击"开始游戏"播放出生动画', canvas.width / 2, canvas.height / 2);
+            }
+        }
+        
+        // 绑定事件
+        startGameBtn.addEventListener('click', startGame);
+        pauseGameBtn.addEventListener('click', pauseGame);
+        resumeGameBtn.addEventListener('click', resumeGame);
+        resetGameBtn.addEventListener('click', resetGame);
+        
+        // 定期更新UI
+        setInterval(updateUI, 100);
+        
+        // 初始化
+        drawBackground();
+        
+        console.log('动画系统集成演示已加载');
+        console.log('点击"开始游戏"按钮体验完整的出生动画流程');
+    </script>
+</body>
+</html>

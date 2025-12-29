@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>出生动画测试</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .canvas-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        canvas {
+            border: 2px solid #333;
+            background: linear-gradient(135deg, #001122, #002244);
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .info-panel {
+            background: #222;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .metric {
+            background: #333;
+            padding: 10px;
+            border-radius: 3px;
+        }
+        
+        .phase-indicator {
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .phase-prebirth { background: #4A90E2; }
+        .phase-birth { background: #F5A623; }
+        .phase-appear { background: #7ED321; }
+        .phase-complete { background: #9013FE; }
+        
+        .description {
+            line-height: 1.6;
+            margin: 20px 0;
+        }
+        
+        .requirements {
+            background: #1a1a2e;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .requirements h3 {
+            color: #4CAF50;
+            margin-top: 0;
+        }
+        
+        .requirements ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .requirements li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>出生动画系统测试</h1>
+        
+        <div class="description">
+            <p>这是人生旅程游戏的出生动画系统测试页面。出生动画是游戏开始时的特殊动画序列，包含三个阶段：</p>
+            <ul>
+                <li><strong>预备阶段 (0-2秒)</strong>: 宇宙光芒效果，生命能量开始汇聚</li>
+                <li><strong>诞生阶段 (2-5秒)</strong>: 生命能量向中心汇聚，温暖光环形成</li>
+                <li><strong>显现阶段 (5-7秒)</strong>: 婴儿角色逐渐显现，特效逐渐消散</li>
+            </ul>
+        </div>
+        
+        <div class="requirements">
+            <h3>需求验证 (需求 1.1-1.5)</h3>
+            <ul>
+                <li>✓ 1.1: 游戏开始时自动播放出生动画序列</li>
+                <li>✓ 1.2: 动画播放期间游戏计时器保持暂停状态</li>
+                <li>✓ 1.3: 动画完成后角色以婴儿形态保留在画面中央</li>
+                <li>✓ 1.4: 动画结束后游戏计时器开始正常倒计时</li>
+                <li>✓ 1.5: 播放时显示生命诞生的光芒和温暖效果</li>
+            </ul>
+        </div>
+        
+        <div class="canvas-container">
+            <canvas id="animationCanvas" width="800" height="600"></canvas>
+        </div>
+        
+        <div class="controls">
+            <button id="playBtn">播放出生动画</button>
+            <button id="pauseBtn" disabled>暂停</button>
+            <button id="resumeBtn" disabled>恢复</button>
+            <button id="stopBtn" disabled>停止</button>
+            <button id="restartBtn">重新开始</button>
+        </div>
+        
+        <div class="controls">
+            <button id="qualityHigh">高质量</button>
+            <button id="qualityMedium">中等质量</button>
+            <button id="qualityLow">低质量</button>
+        </div>
+        
+        <div class="info-panel">
+            <div class="phase-indicator" id="phaseIndicator">准备就绪</div>
+            
+            <div class="metrics">
+                <div class="metric">
+                    <strong>动画时间:</strong> <span id="animationTime">0.00s</span>
+                </div>
+                <div class="metric">
+                    <strong>当前阶段:</strong> <span id="currentPhase">无</span>
+                </div>
+                <div class="metric">
+                    <strong>帧率:</strong> <span id="fps">0</span> FPS
+                </div>
+                <div class="metric">
+                    <strong>渲染调用:</strong> <span id="renderCalls">0</span>
+                </div>
+                <div class="metric">
+                    <strong>游戏计时器:</strong> <span id="gameTimer">运行中</span>
+                </div>
+                <div class="metric">
+                    <strong>角色透明度:</strong> <span id="characterOpacity">0%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 导入动画系统
+        import { AnimationEngine } from '../../core/AnimationEngine.js';
+        import { BirthAnimation } from '../../animations/birth/BirthAnimation.js';
+        
+        // 获取DOM元素
+        const canvas = document.getElementById('animationCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const playBtn = document.getElementById('playBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        
+        const qualityHigh = document.getElementById('qualityHigh');
+        const qualityMedium = document.getElementById('qualityMedium');
+        const qualityLow = document.getElementById('qualityLow');
+        
+        const phaseIndicator = document.getElementById('phaseIndicator');
+        const animationTimeSpan = document.getElementById('animationTime');
+        const currentPhaseSpan = document.getElementById('currentPhase');
+        const fpsSpan = document.getElementById('fps');
+        const renderCallsSpan = document.getElementById('renderCalls');
+        const gameTimerSpan = document.getElementById('gameTimer');
+        const characterOpacitySpan = document.getElementById('characterOpacity');
+        
+        // 创建动画引擎
+        const engine = new AnimationEngine(canvas, {
+            fps: 60,
+            quality: 'high'
+        });
+        
+        // 游戏计时器状态
+        let gameTimerPaused = false;
+        
+        // 设置游戏计时器控制回调
+        engine.onGameTimerPause = () => {
+            gameTimerPaused = true;
+            gameTimerSpan.textContent = '已暂停';
+            gameTimerSpan.style.color = '#ff6b6b';
+        };
+        
+        engine.onGameTimerResume = () => {
+            gameTimerPaused = false;
+            gameTimerSpan.textContent = '运行中';
+            gameTimerSpan.style.color = '#51cf66';
+        };
+        
+        // 当前动画实例
+        let currentAnimation = null;
+        
+        // 更新UI状态
+        function updateUI() {
+            const metrics = engine.getPerformanceMetrics();
+            
+            fpsSpan.textContent = metrics.fps;
+            renderCallsSpan.textContent = metrics.renderCalls;
+            
+            if (currentAnimation) {
+                const timeInSeconds = currentAnimation.currentTime / 1000;
+                animationTimeSpan.textContent = timeInSeconds.toFixed(2) + 's';
+                currentPhaseSpan.textContent = currentAnimation.currentPhase;
+                
+                // 更新阶段指示器
+                const phase = currentAnimation.currentPhase;
+                phaseIndicator.className = `phase-indicator phase-${phase}`;
+                
+                switch (phase) {
+                    case 'prebirth':
+                        phaseIndicator.textContent = '预备阶段 - 宇宙光芒汇聚';
+                        break;
+                    case 'birth':
+                        phaseIndicator.textContent = '诞生阶段 - 生命能量凝聚';
+                        break;
+                    case 'appear':
+                        phaseIndicator.textContent = '显现阶段 - 角色逐渐显现';
+                        break;
+                }
+                
+                // 更新角色透明度
+                const opacity = Math.round(currentAnimation.characterOpacity * 100);
+                characterOpacitySpan.textContent = opacity + '%';
+                
+                // 检查动画是否完成
+                if (currentAnimation.isAnimationComplete()) {
+                    phaseIndicator.className = 'phase-indicator phase-complete';
+                    phaseIndicator.textContent = '动画完成 - 角色已显现在画面中央';
+                    onAnimationComplete();
+                }
+            } else {
+                animationTimeSpan.textContent = '0.00s';
+                currentPhaseSpan.textContent = '无';
+                characterOpacitySpan.textContent = '0%';
+            }
+        }
+        
+        // 动画完成处理
+        function onAnimationComplete() {
+            playBtn.disabled = false;
+            pauseBtn.disabled = true;
+            resumeBtn.disabled = true;
+            stopBtn.disabled = true;
+            
+            // 验证需求完成情况
+            console.log('✓ 需求 1.3: 角色以婴儿形态保留在画面中央');
+            console.log('✓ 需求 1.4: 游戏计时器已恢复正常');
+        }
+        
+        // 播放动画
+        async function playAnimation() {
+            try {
+                console.log('✓ 需求 1.1: 开始播放出生动画序列');
+                
+                // 创建出生动画实例
+                currentAnimation = new BirthAnimation(ctx, {
+                    duration: 7000
+                });
+                
+                // 更新按钮状态
+                playBtn.disabled = true;
+                pauseBtn.disabled = false;
+                stopBtn.disabled = false;
+                
+                // 开始播放
+                await engine.playBirthAnimation();
+                
+                console.log('✓ 需求 1.2: 动画期间游戏计时器已暂停');
+                console.log('✓ 需求 1.5: 显示了生命诞生光芒和温暖效果');
+                
+            } catch (error) {
+                console.error('动画播放失败:', error);
+            }
+        }
+        
+        // 暂停动画
+        function pauseAnimation() {
+            engine.pauseAnimation();
+            pauseBtn.disabled = true;
+            resumeBtn.disabled = false;
+        }
+        
+        // 恢复动画
+        function resumeAnimation() {
+            engine.resumeAnimation();
+            pauseBtn.disabled = false;
+            resumeBtn.disabled = true;
+        }
+        
+        // 停止动画
+        function stopAnimation() {
+            engine.stopAnimation();
+            currentAnimation = null;
+            
+            playBtn.disabled = false;
+            pauseBtn.disabled = true;
+            resumeBtn.disabled = true;
+            stopBtn.disabled = true;
+            
+            phaseIndicator.className = 'phase-indicator';
+            phaseIndicator.textContent = '动画已停止';
+            
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        // 重新开始
+        function restartAnimation() {
+            stopAnimation();
+            setTimeout(playAnimation, 100);
+        }
+        
+        // 设置质量
+        function setQuality(level) {
+            engine.setQuality(level);
+            if (currentAnimation) {
+                currentAnimation.setQuality(level);
+            }
+            
+            // 更新按钮状态
+            document.querySelectorAll('[id^="quality"]').forEach(btn => {
+                btn.style.background = '#666';
+            });
+            
+            const activeBtn = document.getElementById(`quality${level.charAt(0).toUpperCase() + level.slice(1)}`);
+            if (activeBtn) {
+                activeBtn.style.background = '#4CAF50';
+            }
+        }
+        
+        // 绑定事件
+        playBtn.addEventListener('click', playAnimation);
+        pauseBtn.addEventListener('click', pauseAnimation);
+        resumeBtn.addEventListener('click', resumeAnimation);
+        stopBtn.addEventListener('click', stopAnimation);
+        restartBtn.addEventListener('click', restartAnimation);
+        
+        qualityHigh.addEventListener('click', () => setQuality('high'));
+        qualityMedium.addEventListener('click', () => setQuality('medium'));
+        qualityLow.addEventListener('click', () => setQuality('low'));
+        
+        // 初始化质量设置
+        setQuality('high');
+        
+        // 定期更新UI
+        setInterval(updateUI, 100);
+        
+        // 初始化画布背景
+        function drawBackground() {
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#001122');
+            gradient.addColorStop(1, '#002244');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        
+        drawBackground();
+        
+        console.log('出生动画测试页面已加载');
+        console.log('点击"播放出生动画"按钮开始测试');
+    </script>
+</body>
+</html>

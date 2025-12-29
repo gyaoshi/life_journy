@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>动画系统实现验证</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        .verification-item {
+            background: #222;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #666;
+        }
+        
+        .verification-item.success {
+            border-left-color: #4CAF50;
+        }
+        
+        .verification-item.error {
+            border-left-color: #f44336;
+        }
+        
+        .verification-item h4 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+        
+        .verification-item.error h4 {
+            color: #f44336;
+        }
+        
+        .status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        
+        .status.pass {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .status.fail {
+            background: #f44336;
+            color: white;
+        }
+        
+        .canvas-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        canvas {
+            border: 2px solid #333;
+            background: linear-gradient(135deg, #001122, #002244);
+        }
+        
+        button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        .summary {
+            background: #333;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .summary.success {
+            border: 2px solid #4CAF50;
+        }
+        
+        .summary.partial {
+            border: 2px solid #ff9800;
+        }
+        
+        .summary.error {
+            border: 2px solid #f44336;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>动画系统实现验证</h1>
+        <p>这个页面验证需求1（出生动画系统）的所有功能是否正确实现。</p>
+        
+        <div class="canvas-container">
+            <canvas id="testCanvas" width="600" height="400"></canvas>
+            <br>
+            <button id="runVerification">运行完整验证</button>
+            <button id="testBirthAnimation">测试出生动画</button>
+        </div>
+        
+        <div id="verificationResults">
+            <!-- 验证结果将在这里显示 -->
+        </div>
+        
+        <div id="summary" class="summary">
+            <h3>验证摘要</h3>
+            <p id="summaryText">点击"运行完整验证"开始测试</p>
+        </div>
+    </div>
+
+    <script type="module">
+        // 导入动画系统
+        import { AnimationEngine } from './core/AnimationEngine.js';
+        import { BirthAnimation } from './animations/birth/BirthAnimation.js';
+        
+        const canvas = document.getElementById('testCanvas');
+        const ctx = canvas.getContext('2d');
+        const resultsContainer = document.getElementById('verificationResults');
+        const summaryContainer = document.getElementById('summary');
+        const summaryText = document.getElementById('summaryText');
+        
+        let verificationResults = [];
+        
+        // 验证项目
+        const verificationTests = [
+            {
+                name: '动画引擎初始化',
+                requirement: '需求 3.1',
+                test: testAnimationEngineInit
+            },
+            {
+                name: '出生动画模块加载',
+                requirement: '需求 1.1',
+                test: testBirthAnimationLoad
+            },
+            {
+                name: '游戏计时器控制接口',
+                requirement: '需求 1.2, 1.4',
+                test: testGameTimerControl
+            },
+            {
+                name: '出生动画三阶段序列',
+                requirement: '需求 1.1',
+                test: testBirthAnimationPhases
+            },
+            {
+                name: '角色渲染和定位',
+                requirement: '需求 1.3',
+                test: testCharacterRendering
+            },
+            {
+                name: '视觉特效系统',
+                requirement: '需求 1.5',
+                test: testVisualEffects
+            },
+            {
+                name: '性能监控',
+                requirement: '需求 10.2',
+                test: testPerformanceMonitoring
+            },
+            {
+                name: '质量等级控制',
+                requirement: '需求 10.4',
+                test: testQualityControl
+            }
+        ];
+        
+        // 测试动画引擎初始化
+        async function testAnimationEngineInit() {
+            try {
+                const engine = new AnimationEngine(canvas, {
+                    fps: 60,
+                    quality: 'high'
+                });
+                
+                const checks = [
+                    engine !== null,
+                    engine.canvas === canvas,
+                    engine.options.fps === 60,
+                    engine.options.quality === 'high',
+                    typeof engine.playAnimation === 'function',
+                    typeof engine.pauseAnimation === 'function',
+                    typeof engine.stopAnimation === 'function'
+                ];
+                
+                return {
+                    success: checks.every(check => check),
+                    details: `引擎实例化: ${checks[0] ? '✓' : '✗'}, Canvas绑定: ${checks[1] ? '✓' : '✗'}, 配置正确: ${checks[2] && checks[3] ? '✓' : '✗'}, API完整: ${checks.slice(4).every(c => c) ? '✓' : '✗'}`
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    details: `初始化失败: ${error.message}`
+                };
+            }
+        }
+        
+        // 测试出生动画加载
+        async function testBirthAnimationLoad() {
+            try {
+                const engine = new AnimationEngine(canvas);
+                const animation = await engine.loadAnimation('birth');
+                
+                const checks = [
+                    animation !== null,
+                    animation instanceof BirthAnimation,
+                    typeof animation.update === 'function',
+                    typeof animation.render === 'function',
+                    animation.config.duration > 0
+                ];
+                
+                return {
+                    success: checks.every(check => check),
+                    details: `模块加载: ${checks[0] ? '✓' : '✗'}, 类型正确: ${checks[1] ? '✓' : '✗'}, API完整: ${checks.slice(2, 4).every(c => c) ? '✓' : '✗'}, 配置有效: ${checks[4] ? '✓' : '✗'}`
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    details: `加载失败: ${error.message}`
+                };
+            }
+        }
+        
+        // 测试游戏计时器控制
+        async function testGameTimerControl() {
+            try {
+                const engine = new AnimationEngine(canvas);
+                let pauseCalled = false;
+                let resumeCalled = false;
+                
+                engine.onGameTimerPause = () => { pauseCalled = true; };
+                engine.onGameTimerResume = () => { resumeCalled = true; };
+                
+                engine.pauseGameTimer();
+                engine.resumeGameTimer();
+                
+                const checks = [
+                    typeof engine.pauseGameTimer === 'function',
+                    typeof engine.resumeGameTimer === 'function',
+                    pauseCalled,
+                    resumeCalled
+                ];
+                
+                return {
+                    success: checks.every(check => check),
+                    details: `暂停接口: ${checks[0] ? '✓' : '✗'}, 恢复接口: ${checks[1] ? '✓' : '✗'}, 暂停回调: ${checks[2] ? '✓' : '✗'}, 恢复回调: ${checks[3] ? '✓' : '✗'}`
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    details: `控制测试失败: ${error.message}`
+                };
+            }
+        }
+        
+        // 测试出生动画阶段
+        async function testBirthAnimationPhases() {
+            try {
+                const animation = new BirthAnimation(ctx);
+                
+                // 测试不同时间点的阶段
+                animation.update(1000, 16); // 1秒 - 预备阶段
+                const phase1 = animation.currentPhase;
+                
+                animation.update(3000, 16); // 3秒 - 诞生阶段
+                const phase2 = animation.currentPhase;
+                
+                animation.update(6000, 16); // 6秒 - 显现阶段
+                const phase3 = animation.currentPhase;
+                
+                const checks = [
+                    phase1 === 'prebirth',
+                    phase2 === 'birth',
+                    phase3 === 'appear',
+                    animation.config.phases.prebirth !== undefined,
+                    animation.config.phases.birth !== undefined,
+                    animation.config.phases.appear !== undefined
+                ];
+                
+                return {
+                    success: checks.every(check => check),
+                    details: `预备阶段: ${checks[0] ? '✓' : '✗'}, 诞生阶段: ${checks[1] ? '✓' : '✗'}, 显现阶段: ${checks[2] ? '✓' : '✗'}, 配置完整: ${checks.slice(3).every(c => c) ? '✓' : '✗'}`
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    details: `阶段测试失败: ${error.message}`
+                };
+            }
+        }
+        
+        // 测试角色渲染
+        async function testCharacterRendering() {
+            try {
+                const animation = new BirthAnimation(ctx);
+                
+                // 模拟显现阶段
+                animation.update(6000, 16);
+                animation.render(ctx);
+                
+                const checks = [
+                    animation.characterPosition !== undefined,
+                    animation.characterPosition.x === 400, // 画面中央
+                    animation.characterPosition.y === 300,
+                    animation.characterOpacity >= 0,
+                    animation.characterScale >= 0,
+                    typeof animation.drawBabyCharacter === 'function'
+                ];
+                
+                return {
+                    success: checks.every(check => check),
+                    details: `位置设置: ${checks.slice(0, 3).every(c => c) ? '✓' : '✗'}, 透明度: ${checks[3] ? '✓' : '✗'}, 缩放: ${checks[4] ? '✓' : '✗'}, 渲染方法: ${checks[5] ? '✓' : '✗'}`
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    details: `渲染测试失败: ${error.message}`
+                };
+            }
+        }
+        
+        // 测试视觉特效
+        async function testVisualEffects() {
+            try {
+                const animation = new BirthAnimation(ctx);
+                animation.update(3000, 16); // 诞生阶段
+                
+                const checks = [
+                    Array.isArray(animation.cosmicLights),
+                    animation.cosmicLights.length > 0,
+                    Array.isArray(animation.lifeEnergyParticles),
+                    animation.lifeEnergyParticles.length > 0,
+                    animation.warmthAura !== undefined,
+                    typeof animation.renderCosmicLights === 'function',
+                    typeof animation.renderLifeEnergyParticles === 'function',
+                    typeof animation.renderWarmthAura === 'function'
+                ];
+                
+                return {
+                    success: checks.every(check => check),
+                    details: `宇宙光芒: ${checks.slice(0, 2).every(c => c) ? '✓' : '✗'}, 生命粒子: ${checks.slice(2, 4).every(c => c) ? '✓' : '✗'}, 温暖光环: ${checks[4] ? '✓' : '✗'}, 渲染方法: ${checks.slice(5).every(c => c) ? '✓' : '✗'}`
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    details: `特效测试失败: ${error.message}`
+                };
+            }
+        }
+        
+        // 测试性能监控
+        async function testPerformanceMonitoring() {
+            try {
+                const engine = new AnimationEngine(canvas);
+                const metrics = engine.getPerformanceMetrics();
+                
+                const checks = [
+                    metrics !== null,
+                    typeof metrics.fps === 'number',
+                    typeof metrics.frameTime === 'number',
+                    typeof metrics.memoryUsage === 'number',
+                    typeof metrics.renderCalls === 'number',
+                    typeof engine.updatePerformanceMetrics === 'function'
+                ];
+                
+                return {
+                    success: checks.every(check => check),
+                    details: `指标对象: ${checks[0] ? '✓' : '✗'}, FPS: ${checks[1] ? '✓' : '✗'}, 帧时间: ${checks[2] ? '✓' : '✗'}, 内存: ${checks[3] ? '✓' : '✗'}, 渲染调用: ${checks[4] ? '✓' : '✗'}, 更新方法: ${checks[5] ? '✓' : '✗'}`
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    details: `性能监控失败: ${error.message}`
+                };
+            }
+        }
+        
+        // 测试质量控制
+        async function testQualityControl() {
+            try {
+                const engine = new AnimationEngine(canvas);
+                const animation = new BirthAnimation(ctx);
+                
+                // 测试质量设置
+                engine.setQuality('low');
+                animation.setQuality('low');
+                
+                const lowParticleCount = animation.lifeEnergyParticles.length;
+                
+                animation.setQuality('high');
+                const highParticleCount = animation.lifeEnergyParticles.length;
+                
+                const checks = [
+                    typeof engine.setQuality === 'function',
+                    typeof animation.setQuality === 'function',
+                    engine.options.quality === 'low',
+                    lowParticleCount <= highParticleCount
+                ];
+                
+                return {
+                    success: checks.every(check => check),
+                    details: `引擎质量控制: ${checks[0] ? '✓' : '✗'}, 动画质量控制: ${checks[1] ? '✓' : '✗'}, 质量设置: ${checks[2] ? '✓' : '✗'}, 性能调节: ${checks[3] ? '✓' : '✗'}`
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    details: `质量控制失败: ${error.message}`
+                };
+            }
+        }
+        
+        // 运行单个测试
+        async function runTest(test) {
+            console.log(`运行测试: ${test.name}`);
+            const result = await test.test();
+            return {
+                name: test.name,
+                requirement: test.requirement,
+                success: result.success,
+                details: result.details
+            };
+        }
+        
+        // 显示测试结果
+        function displayResult(result) {
+            const div = document.createElement('div');
+            div.className = `verification-item ${result.success ? 'success' : 'error'}`;
+            
+            div.innerHTML = `
+                <h4>${result.name}</h4>
+                <div><strong>需求:</strong> ${result.requirement}</div>
+                <div><strong>状态:</strong> <span class="status ${result.success ? 'pass' : 'fail'}">${result.success ? '通过' : '失败'}</span></div>
+                <div><strong>详情:</strong> ${result.details}</div>
+            `;
+            
+            resultsContainer.appendChild(div);
+        }
+        
+        // 更新摘要
+        function updateSummary() {
+            const totalTests = verificationResults.length;
+            const passedTests = verificationResults.filter(r => r.success).length;
+            const failedTests = totalTests - passedTests;
+            
+            let summaryClass = 'success';
+            let summaryMessage = '';
+            
+            if (failedTests === 0) {
+                summaryClass = 'success';
+                summaryMessage = `🎉 所有测试通过！需求1（出生动画系统）已完全实现。`;
+            } else if (passedTests > failedTests) {
+                summaryClass = 'partial';
+                summaryMessage = `⚠️ 部分测试通过。${passedTests}/${totalTests} 个测试成功，还有 ${failedTests} 个需要修复。`;
+            } else {
+                summaryClass = 'error';
+                summaryMessage = `❌ 多数测试失败。${passedTests}/${totalTests} 个测试成功，需要重点检查实现。`;
+            }
+            
+            summaryContainer.className = `summary ${summaryClass}`;
+            summaryText.textContent = summaryMessage;
+        }
+        
+        // 运行完整验证
+        async function runFullVerification() {
+            resultsContainer.innerHTML = '';
+            verificationResults = [];
+            summaryText.textContent = '正在运行验证测试...';
+            
+            for (const test of verificationTests) {
+                const result = await runTest(test);
+                verificationResults.push(result);
+                displayResult(result);
+            }
+            
+            updateSummary();
+        }
+        
+        // 测试出生动画播放
+        async function testBirthAnimationPlay() {
+            try {
+                const engine = new AnimationEngine(canvas);
+                
+                // 设置计时器控制回调
+                let timerPaused = false;
+                let timerResumed = false;
+                
+                engine.onGameTimerPause = () => { timerPaused = true; };
+                engine.onGameTimerResume = () => { timerResumed = true; };
+                
+                // 播放出生动画
+                console.log('开始播放出生动画...');
+                await engine.playBirthAnimation();
+                
+                console.log('✅ 出生动画播放完成');
+                console.log('✅ 游戏计时器控制:', timerPaused ? '已暂停' : '未暂停', '→', timerResumed ? '已恢复' : '未恢复');
+                
+                alert('出生动画测试完成！请查看控制台输出。');
+                
+            } catch (error) {
+                console.error('❌ 出生动画测试失败:', error);
+                alert('出生动画测试失败: ' + error.message);
+            }
+        }
+        
+        // 绑定事件
+        document.getElementById('runVerification').addEventListener('click', runFullVerification);
+        document.getElementById('testBirthAnimation').addEventListener('click', testBirthAnimationPlay);
+        
+        // 初始化画布
+        function drawBackground() {
+            const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradient.addColorStop(0, '#001122');
+            gradient.addColorStop(1, '#002244');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('动画系统验证测试', canvas.width / 2, canvas.height / 2);
+        }
+        
+        drawBackground();
+        
+        console.log('动画系统验证页面已加载');
+        console.log('点击按钮开始验证测试');
+    </script>
+</body>
+</html>

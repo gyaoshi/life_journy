@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色系统测试 - 人生旅程游戏</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .game-canvas {
+            border: 2px solid #333;
+            background: linear-gradient(to bottom, #87CEEB, #98FB98);
+            display: block;
+            margin: 0 auto;
+            cursor: crosshair;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .control-group h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            margin: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .emotion-btn {
+            background: #FF6B6B;
+        }
+        
+        .emotion-btn:hover {
+            background: #FF5252;
+        }
+        
+        .event-btn {
+            background: #4ECDC4;
+        }
+        
+        .event-btn:hover {
+            background: #26A69A;
+        }
+        
+        .info-panel {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .status {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .instructions {
+            background: #E3F2FD;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 角色系统测试</h1>
+            <p>测试新的人物交互移动系统和角色视觉替换功能</p>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 使用说明：</h3>
+            <ul>
+                <li><strong>点击画面</strong> - 角色会移动到点击位置</li>
+                <li><strong>切换人生阶段</strong> - 观察角色形态变化</li>
+                <li><strong>改变情感</strong> - 查看角色表情变化</li>
+                <li><strong>触发事件</strong> - 角色会移动到事件位置并播放动画</li>
+                <li><strong>黄色虚线框</strong> - 表示可点击的特殊区域</li>
+            </ul>
+        </div>
+        
+        <canvas id="gameCanvas" class="game-canvas" width="800" height="600"></canvas>
+        
+        <div class="controls">
+            <div class="control-group">
+                <h3>👶 人生阶段</h3>
+                <button onclick="changeStage('baby')">婴儿期</button>
+                <button onclick="changeStage('child')">儿童期</button>
+                <button onclick="changeStage('teen')">青少年期</button>
+                <button onclick="changeStage('adult')">成年期</button>
+                <button onclick="changeStage('elder')">老年期</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>😊 情感表达</h3>
+                <button class="emotion-btn" onclick="changeEmotion('happy')">开心</button>
+                <button class="emotion-btn" onclick="changeEmotion('sad')">悲伤</button>
+                <button class="emotion-btn" onclick="changeEmotion('surprised')">惊讶</button>
+                <button class="emotion-btn" onclick="changeEmotion('excited')">兴奋</button>
+                <button class="emotion-btn" onclick="changeEmotion('neutral')">中性</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎯 人生事件</h3>
+                <button class="event-btn" onclick="triggerEvent('first_smile')">第一次微笑</button>
+                <button class="event-btn" onclick="triggerEvent('first_day_kindergarten')">第一天上学</button>
+                <button class="event-btn" onclick="triggerEvent('make_first_friend')">交朋友</button>
+                <button class="event-btn" onclick="triggerEvent('first_job')">第一份工作</button>
+                <button class="event-btn" onclick="triggerEvent('wedding_ceremony')">结婚典礼</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>⚙️ 系统控制</h3>
+                <button onclick="toggleInteraction()">切换交互</button>
+                <button onclick="toggleHints()">切换提示</button>
+                <button onclick="resetPosition()">重置位置</button>
+                <button onclick="testTransition()">测试转换</button>
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="status">
+                <span><strong>当前阶段:</strong> <span id="currentStage">婴儿期</span></span>
+                <span><strong>当前情感:</strong> <span id="currentEmotion">中性</span></span>
+                <span><strong>位置:</strong> <span id="currentPosition">(400, 300)</span></span>
+                <span><strong>移动状态:</strong> <span id="movementStatus">静止</span></span>
+            </div>
+            <div id="eventLog" style="max-height: 100px; overflow-y: auto; background: #f9f9f9; padding: 10px; border-radius: 4px;">
+                <div>🎮 系统已初始化，点击画面开始体验！</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载核心模块 -->
+    <script src="core/CharacterRenderer.js"></script>
+    <script src="characters/CharacterAssets.js"></script>
+    <script src="core/MovementController.js"></script>
+    <script src="core/InteractionManager.js"></script>
+
+    <script>
+        // 全局变量
+        let canvas, ctx;
+        let characterRenderer, characterAssets, movementController, interactionManager;
+        let currentStage = 'baby';
+        let currentEmotion = 'neutral';
+        let isInteractionEnabled = true;
+        let showHints = true;
+        
+        // 初始化系统
+        function initializeSystem() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // 创建角色资源管理器
+            characterAssets = new CharacterAssets();
+            
+            // 创建角色渲染器
+            characterRenderer = new CharacterRenderer(ctx, { scale: 1.0 });
+            
+            // 创建移动控制器
+            const mockCharacter = {
+                setPosition: (x, y) => {
+                    updatePositionDisplay(x, y);
+                },
+                setAnimationState: (state, options) => {
+                    updateMovementStatus(state);
+                },
+                setFacing: (direction) => {
+                    logEvent(`角色朝向: ${direction}`);
+                }
+            };
+            
+            const mockScene = {
+                setBackground: (sceneName) => {
+                    logEvent(`场景切换: ${sceneName}`);
+                }
+            };
+            
+            movementController = new MovementController(mockCharacter, mockScene, {
+                speed: 150,
+                easing: 'easeInOutQuad',
+                pathType: 'direct'
+            });
+            
+            // 创建交互管理器
+            interactionManager = new InteractionManager(
+                canvas, 
+                movementController, 
+                null, // 暂时不使用动画引擎
+                {
+                    showMovementHints: true,
+                    showEventPositions: true
+                }
+            );
+            
+            // 设置初始位置
+            movementController.setPosition(400, 300);
+            
+            // 开始渲染循环
+            startRenderLoop();
+            
+            logEvent('🚀 系统初始化完成！');
+        }
+        
+        // 渲染循环
+        function startRenderLoop() {
+            function render() {
+                // 清空画布
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // 绘制背景网格（可选）
+                drawGrid();
+                
+                // 渲染角色
+                const position = movementController.getCurrentPosition();
+                characterRenderer.renderCharacter(currentStage, position, currentEmotion);
+                
+                // 渲染交互提示
+                interactionManager.renderInteractionHints(ctx);
+                
+                // 继续下一帧
+                requestAnimationFrame(render);
+            }
+            
+            render();
+        }
+        
+        // 绘制网格背景
+        function drawGrid() {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)';
+            ctx.lineWidth = 1;
+            
+            // 垂直线
+            for (let x = 0; x <= canvas.width; x += 50) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // 水平线
+            for (let y = 0; y <= canvas.height; y += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+        
+        // 控制函数
+        function changeStage(newStage) {
+            if (characterRenderer.isTransitioning) {
+                logEvent('⚠️ 正在转换中，请稍候...');
+                return;
+            }
+            
+            const oldStage = currentStage;
+            currentStage = newStage;
+            
+            // 执行形态转换
+            characterRenderer.transitionToStage(oldStage, newStage, 1500)
+                .then(() => {
+                    logEvent(`✨ 成功转换到${getStageDisplayName(newStage)}`);
+                    updateStageDisplay(newStage);
+                })
+                .catch(error => {
+                    logEvent(`❌ 转换失败: ${error.message}`);
+                });
+        }
+        
+        function changeEmotion(emotion) {
+            currentEmotion = emotion;
+            characterRenderer.setCharacterEmotion(emotion);
+            updateEmotionDisplay(emotion);
+            logEvent(`😊 情感变化: ${getEmotionDisplayName(emotion)}`);
+        }
+        
+        function triggerEvent(eventType) {
+            logEvent(`🎯 触发事件: ${getEventDisplayName(eventType)}`);
+            
+            interactionManager.handleEventTrigger(eventType, {
+                stage: currentStage,
+                emotion: currentEmotion
+            }).then(() => {
+                logEvent(`✅ 事件完成: ${getEventDisplayName(eventType)}`);
+            }).catch(error => {
+                logEvent(`❌ 事件失败: ${error.message}`);
+            });
+        }
+        
+        function toggleInteraction() {
+            isInteractionEnabled = !isInteractionEnabled;
+            interactionManager.setInteractionEnabled(isInteractionEnabled);
+            logEvent(`🎮 交互${isInteractionEnabled ? '启用' : '禁用'}`);
+        }
+        
+        function toggleHints() {
+            showHints = !showHints;
+            interactionManager.showMovementHints = showHints;
+            interactionManager.showEventPositions = showHints;
+            logEvent(`💡 提示${showHints ? '显示' : '隐藏'}`);
+        }
+        
+        function resetPosition() {
+            movementController.setPosition(400, 300);
+            logEvent('🏠 位置已重置到中心');
+        }
+        
+        function testTransition() {
+            const stages = ['baby', 'child', 'teen', 'adult', 'elder'];
+            const currentIndex = stages.indexOf(currentStage);
+            const nextIndex = (currentIndex + 1) % stages.length;
+            changeStage(stages[nextIndex]);
+        }
+        
+        // 显示更新函数
+        function updateStageDisplay(stage) {
+            document.getElementById('currentStage').textContent = getStageDisplayName(stage);
+        }
+        
+        function updateEmotionDisplay(emotion) {
+            document.getElementById('currentEmotion').textContent = getEmotionDisplayName(emotion);
+        }
+        
+        function updatePositionDisplay(x, y) {
+            document.getElementById('currentPosition').textContent = `(${Math.round(x)}, ${Math.round(y)})`;
+        }
+        
+        function updateMovementStatus(status) {
+            const statusMap = {
+                'idle': '静止',
+                'walking': '行走中',
+                'running': '奔跑中'
+            };
+            document.getElementById('movementStatus').textContent = statusMap[status] || status;
+        }
+        
+        function logEvent(message) {
+            const eventLog = document.getElementById('eventLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #666;">[${timestamp}]</span> ${message}`;
+            eventLog.appendChild(logEntry);
+            eventLog.scrollTop = eventLog.scrollHeight;
+        }
+        
+        // 辅助函数
+        function getStageDisplayName(stage) {
+            const stageNames = {
+                'baby': '婴儿期',
+                'child': '儿童期',
+                'teen': '青少年期',
+                'adult': '成年期',
+                'elder': '老年期'
+            };
+            return stageNames[stage] || stage;
+        }
+        
+        function getEmotionDisplayName(emotion) {
+            const emotionNames = {
+                'happy': '开心',
+                'sad': '悲伤',
+                'surprised': '惊讶',
+                'excited': '兴奋',
+                'neutral': '中性',
+                'sleepy': '困倦'
+            };
+            return emotionNames[emotion] || emotion;
+        }
+        
+        function getEventDisplayName(eventType) {
+            const eventNames = {
+                'first_smile': '第一次微笑',
+                'first_day_kindergarten': '第一天上学',
+                'make_first_friend': '交到第一个朋友',
+                'first_job': '第一份工作',
+                'wedding_ceremony': '结婚典礼'
+            };
+            return eventNames[eventType] || eventType;
+        }
+        
+        // 页面加载完成后初始化
+        window.addEventListener('load', initializeSystem);
+        
+        // 添加键盘快捷键
+        document.addEventListener('keydown', (event) => {
+            switch(event.key) {
+                case '1': changeStage('baby'); break;
+                case '2': changeStage('child'); break;
+                case '3': changeStage('teen'); break;
+                case '4': changeStage('adult'); break;
+                case '5': changeStage('elder'); break;
+                case 'h': changeEmotion('happy'); break;
+                case 's': changeEmotion('sad'); break;
+                case 'n': changeEmotion('neutral'); break;
+                case 'r': resetPosition(); break;
+                case 't': testTransition(); break;
+            }
+        });
+    </script>
+</body>
+</html>

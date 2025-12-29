@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>服务器测试</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        .success {
+            color: #4ecdc4;
+            font-size: 24px;
+            margin: 20px 0;
+        }
+        .links {
+            margin: 20px 0;
+        }
+        .links a {
+            display: block;
+            color: #4ecdc4;
+            text-decoration: none;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #4ecdc4;
+            border-radius: 5px;
+        }
+        .links a:hover {
+            background: #4ecdc4;
+            color: #1a1a2e;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎮 服务器连接成功！</h1>
+    <div class="success">如果你能看到这个页面，说明服务器正在正常运行</div>
+    
+    <div class="links">
+        <h2>游戏链接：</h2>
+        <a href="enhanced-game.html">🎮 增强版人生旅程游戏</a>
+    </div>
+    
+    <div style="margin-top: 40px; color: #999;">
+        <p>当前时间: <span id="time"></span></p>
+        <p>服务器地址: http://localhost:3000</p>
+    </div>
+    
+    <script>
+        function updateTime() {
+            document.getElementById('time').textContent = new Date().toLocaleString();
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+    </script>
+</body>
+</html>

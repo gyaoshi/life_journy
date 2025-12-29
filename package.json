@@ -1,0 +1,26 @@
+{
+  "name": "life-journey-game",
+  "version": "1.0.0",
+  "description": "人生旅程游戏 - 一个模拟完整人生历程的互动小游戏",
+  "main": "index.html",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "serve": "python -m http.server 8000",
+    "dev": "live-server --port=8000"
+  },
+  "keywords": [
+    "game",
+    "canvas",
+    "mobile",
+    "life-simulation"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@jest/globals": "^29.0.0",
+    "fast-check": "^3.0.0",
+    "jest": "^29.0.0",
+    "jest-environment-jsdom": "^30.2.0"
+  }
+}

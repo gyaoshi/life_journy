@@ -1,0 +1,3569 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>增强版人生旅程游戏</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #gameCanvas {
+            border: 2px solid #4ecdc4;
+            background: #000;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+        
+        .info {
+            text-align: center;
+            margin: 10px 0;
+        }
+        
+        .status {
+            color: #4ecdc4;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>馃幃 澧炲己鐗堜汉鐢熸梾绋嬫父鎴?/h1>
+    <div class="info">
+        <div id="status" class="status">姝ｅ湪鍒濆鍖?..</div>
+    </div>
+    
+    <canvas id="gameCanvas" width="900" height="700"></canvas>
+    
+    <div class="info">
+        <p>馃搵 娓告垙璇存槑锛?/p>
+        <p>鈥?鐐瑰嚮灞忓箷寮€濮嬫父鎴?鈥?蹇€熺偣鍑诲僵鑹插渾鍦堝畬鎴愪汉鐢熶簨浠?/p>
+        <p>鈥?瑙傜湅瑙掕壊鍦ㄦ瘡涓簨浠朵腑鐨勫姩鐢昏〃婕?鈥?浣撻獙100绉掑畬鏁翠汉鐢熸梾绋?/p>
+    </div>
+    
+    <script>
+        class EnhancedGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.status = document.getElementById('status');
+                
+                this.isRunning = false;
+                this.gameTime = 0;
+                this.score = 0;
+                this.stage = 0;
+                this.gameEnded = false;
+                this.stageNames = ['濠村効鏈?, '鍎跨鏈?, '闈掑皯骞存湡', '鎴愬勾鏈?, '鑰佸勾鏈?];
+                this.stageColors = ['#ffb3ba', '#87ceeb', '#90ee90', '#ffff99', '#deb887'];
+                
+                // 瑙掕壊灞炴€?
+                this.character = {
+                    x: 450,
+                    y: 400,
+                    targetX: 450,
+                    targetY: 400,
+                    size: 45,
+                    animation: 'idle',
+                    emotion: 'neutral',
+                    isMoving: false,
+                    animationFrame: 0,
+                    posture: 'crawling', // crawling, standing, sitting
+                    specialAnimation: null,
+                    specialAnimationTime: 0
+                };
+                
+                // 褰撳墠浜や簰浜嬩欢
+                this.currentEvent = null;
+                this.lastEventTime = 0;
+                this.eventInterval = 4000;
+                
+                // 浜嬩欢杩涘害璺熻釜
+                this.stageEventIndex = [0, 0, 0, 0, 0]; // 姣忎釜闃舵鐨勪簨浠剁储寮?
+                this.completedEvents = new Set(); // 宸插畬鎴愮殑浜嬩欢
+                
+                // 鍦烘櫙鍏冪礌
+                this.sceneElements = [];
+                this.temporaryElements = [];
+                
+                // 娓告垙鍐呮枃瀛楁樉绀?
+                this.gameText = {
+                    text: '',
+                    x: 450,
+                    y: 100,
+                    alpha: 0,
+                    fadeTime: 0
+                };
+                
+                // 浜嬩欢鍔ㄧ敾绯荤粺 - 姣忎釜浜嬩欢鐨勮缁嗗姩鐢诲紩鎿?
+                this.eventAnimations = {
+                    // 鍔ㄧ敾鐘舵€佺鐞?
+                    currentAnimation: null,
+                    animationTime: 0,
+                    animationPhase: 'intro', // intro, main, outro
+                    animationElements: [],
+                    
+                    // 鍔ㄧ敾閰嶇疆
+                    animations: {
+                        // 濠村効鏈熷姩鐢?
+                        'smile': {
+                            duration: 4000,
+                            phases: ['setup', 'motherAppears', 'interaction', 'smile', 'celebration'],
+                            elements: ['mother', 'sparkles', 'hearts', 'toys']
+                        },
+                        'rollover': {
+                            duration: 3500,
+                            phases: ['preparation', 'struggle', 'success', 'celebration'],
+                            elements: ['blanket', 'toys', 'sparkles', 'encouragement']
+                        },
+                        'standup': {
+                            duration: 5000,
+                            phases: ['crawling', 'attempting', 'wobbling', 'standing', 'celebration'],
+                            elements: ['furniture', 'toys', 'family', 'cheering']
+                        },
+                        'firstwalk': {
+                            duration: 6000,
+                            phases: ['standing', 'firstStep', 'wobbling', 'walking', 'celebration'],
+                            elements: ['family', 'toys', 'path', 'celebration']
+                        },
+                        
+                        // 鍎跨鏈熷姩鐢?
+                        'kindergarten': {
+                            duration: 5000,
+                            phases: ['arrival', 'nervousness', 'exploration', 'adaptation', 'happiness'],
+                            elements: ['school', 'teacher', 'children', 'toys', 'playground']
+                        },
+                        'makefriend': {
+                            duration: 4500,
+                            phases: ['shyness', 'approach', 'interaction', 'bonding', 'friendship'],
+                            elements: ['friend', 'toys', 'playground', 'activities', 'laughter']
+                        },
+                        'bicycle': {
+                            duration: 6000,
+                            phases: ['learning', 'falling', 'trying', 'balancing', 'riding'],
+                            elements: ['bicycle', 'helmet', 'parent', 'path', 'celebration']
+                        },
+                        'perform': {
+                            duration: 5500,
+                            phases: ['preparation', 'nervousness', 'performance', 'applause', 'bow'],
+                            elements: ['stage', 'audience', 'lights', 'costume', 'applause']
+                        },
+                        
+                        // 闈掑皯骞存湡鍔ㄧ敾
+                        'study': {
+                            duration: 4000,
+                            phases: ['preparation', 'studying', 'stress', 'breakthrough', 'success'],
+                            elements: ['books', 'desk', 'lamp', 'notes', 'stress']
+                        },
+                        'confused': {
+                            duration: 4500,
+                            phases: ['normalcy', 'questions', 'confusion', 'searching', 'acceptance'],
+                            elements: ['mirror', 'thoughts', 'questions', 'emotions', 'growth']
+                        },
+                        'love': {
+                            duration: 6000,
+                            phases: ['meeting', 'attraction', 'nervousness', 'connection', 'happiness'],
+                            elements: ['crush', 'hearts', 'flowers', 'butterflies', 'romance']
+                        },
+                        'decision': {
+                            duration: 5000,
+                            phases: ['contemplation', 'options', 'weighing', 'decision', 'commitment'],
+                            elements: ['crossroads', 'signs', 'paths', 'future', 'determination']
+                        },
+                        
+                        // 鎴愬勾鏈熷姩鐢?
+                        'job': {
+                            duration: 4500,
+                            phases: ['interview', 'nervousness', 'questions', 'success', 'celebration'],
+                            elements: ['office', 'interviewer', 'desk', 'documents', 'handshake']
+                        },
+                        'truelove': {
+                            duration: 7000,
+                            phases: ['meeting', 'dating', 'bonding', 'realization', 'commitment'],
+                            elements: ['partner', 'dates', 'activities', 'love', 'future']
+                        },
+                        'wedding': {
+                            duration: 8000,
+                            phases: ['preparation', 'ceremony', 'vows', 'kiss', 'celebration'],
+                            elements: ['church', 'guests', 'rings', 'flowers', 'celebration']
+                        },
+                        'baby': {
+                            duration: 6000,
+                            phases: ['pregnancy', 'birth', 'firstSight', 'holding', 'family'],
+                            elements: ['hospital', 'baby', 'partner', 'joy', 'family']
+                        },
+                        
+                        // 鑰佸勾鏈熷姩鐢?
+                        'retire': {
+                            duration: 5000,
+                            phases: ['lastDay', 'farewell', 'transition', 'freedom', 'newLife'],
+                            elements: ['office', 'colleagues', 'home', 'hobbies', 'peace']
+                        },
+                        'grandchild': {
+                            duration: 6000,
+                            phases: ['arrival', 'meeting', 'bonding', 'playing', 'love'],
+                            elements: ['grandchild', 'toys', 'stories', 'wisdom', 'generations']
+                        },
+                        'memories': {
+                            duration: 7000,
+                            phases: ['reflection', 'childhood', 'youth', 'adulthood', 'gratitude'],
+                            elements: ['photos', 'memories', 'timeline', 'emotions', 'life']
+                        },
+                        'wisdom': {
+                            duration: 6000,
+                            phases: ['teaching', 'sharing', 'guidance', 'legacy', 'continuation'],
+                            elements: ['students', 'books', 'knowledge', 'future', 'legacy']
+                        }
+                    }
+                };
+                
+                // 鍑虹敓鍔ㄧ敾绯荤粺
+                this.birthAnimation = {
+                    active: false,
+                    babyY: -100, // 濠村効浠庡睆骞曚笂鏂瑰紑濮?
+                    targetY: 400, // 鐩爣浣嶇疆
+                    speed: 0, // 涓嬮檷閫熷害
+                    bounces: 0, // 寮硅烦娆℃暟
+                    maxBounces: 3,
+                    phase: 'falling', // falling, bouncing, complete
+                    sparkles: [], // 闂厜鏁堟灉
+                    time: 0
+                };
+                
+                // 璇︾粏鐨勪汉鐢熶簨浠?
+                this.lifeEvents = {
+                    0: [ // 濠村効鏈?
+                        { 
+                            title: '绗竴娆″井绗?, 
+                            description: '瀛︿細鐢ㄥ井绗戣〃杈惧揩涔?,
+                            animation: 'smile',
+                            sceneChange: 'addMother',
+                            characterChange: 'smile',
+                            duration: 2000
+                        },
+                        { 
+                            title: '瀛︿細缈昏韩', 
+                            description: '浜虹敓绗竴涓ぇ鍔ㄤ綔',
+                            animation: 'rollover',
+                            sceneChange: null,
+                            characterChange: 'rollover',
+                            duration: 1500
+                        },
+                        { 
+                            title: '绗竴娆＄珯绔?, 
+                            description: '浠庣埇琛屽埌绔欑珛鐨勯璺?,
+                            animation: 'standup',
+                            sceneChange: null,
+                            characterChange: 'standup',
+                            duration: 2500
+                        },
+                        { 
+                            title: '瀛︿細璧拌矾', 
+                            description: '杩堝嚭浜虹敓绗竴姝?,
+                            animation: 'firstwalk',
+                            sceneChange: null,
+                            characterChange: 'firstwalk',
+                            duration: 3000
+                        }
+                    ],
+                    1: [ // 鍎跨鏈?
+                        { 
+                            title: '绗竴澶╀笂骞煎効鍥?, 
+                            description: '韪忓叆绀句細鐨勭涓€姝?,
+                            animation: 'kindergarten',
+                            sceneChange: 'kindergarten',
+                            characterChange: 'nervous',
+                            duration: 2000
+                        },
+                        { 
+                            title: '缁撹瘑濂芥湅鍙?, 
+                            description: '浜虹敓绗竴涓湡姝ｇ殑鏈嬪弸',
+                            animation: 'makefriend',
+                            sceneChange: 'addFriend',
+                            characterChange: 'happy',
+                            duration: 2500
+                        },
+                        { 
+                            title: '瀛︿細楠戣嚜琛岃溅', 
+                            description: '骞宠　涓庡媷姘旂殑鑰冮獙',
+                            animation: 'bicycle',
+                            sceneChange: 'addBicycle',
+                            characterChange: 'excited',
+                            duration: 3000
+                        },
+                        { 
+                            title: '绗竴娆¤〃婕?, 
+                            description: '鍦ㄨ垶鍙颁笂灞曠幇鑷繁',
+                            animation: 'perform',
+                            sceneChange: 'stage',
+                            characterChange: 'perform',
+                            duration: 2500
+                        }
+                    ],
+                    2: [ // 闈掑皯骞存湡
+                        { 
+                            title: '鑰冭瘯鍘嬪姏', 
+                            description: '瀛︿範鐨勬寫鎴樹笌鎴愰暱',
+                            animation: 'study',
+                            sceneChange: 'classroom',
+                            characterChange: 'study',
+                            duration: 1800
+                        },
+                        { 
+                            title: '闈掓槬鏈熷洶鎯?, 
+                            description: '鎴愰暱璺笂鐨勮糠鑼?,
+                            animation: 'confused',
+                            sceneChange: null,
+                            characterChange: 'confused',
+                            duration: 2200
+                        },
+                        { 
+                            title: '鍒濇亱浣撻獙', 
+                            description: '浜虹敓绗竴娆″績鍔?,
+                            animation: 'love',
+                            sceneChange: 'addHeart',
+                            characterChange: 'love',
+                            duration: 3000
+                        },
+                        { 
+                            title: '閫夋嫨鏈潵', 
+                            description: '鍐冲畾浜虹敓鏂瑰悜',
+                            animation: 'decision',
+                            sceneChange: 'crossroads',
+                            characterChange: 'thinking',
+                            duration: 2500
+                        }
+                    ],
+                    3: [ // 鎴愬勾鏈?
+                        { 
+                            title: '鎵惧埌宸ヤ綔', 
+                            description: '韪忓叆鑱屽満鐨勭涓€姝?,
+                            animation: 'job',
+                            sceneChange: 'office',
+                            characterChange: 'confident',
+                            duration: 2000
+                        },
+                        { 
+                            title: '閬囪鐪熺埍', 
+                            description: '鐢熷懡涓渶閲嶈鐨勪汉',
+                            animation: 'truelove',
+                            sceneChange: 'addPartner',
+                            characterChange: 'love',
+                            duration: 3500
+                        },
+                        { 
+                            title: '缁撳鍏哥ぜ', 
+                            description: '浜虹敓鏈€缇庡ソ鐨勬椂鍒?,
+                            animation: 'wedding',
+                            sceneChange: 'wedding',
+                            characterChange: 'wedding',
+                            duration: 4000
+                        },
+                        { 
+                            title: '杩庢帴鏂扮敓鍛?, 
+                            description: '鎴愪负鐖舵瘝鐨勫枩鎮?,
+                            animation: 'baby',
+                            sceneChange: 'addBaby',
+                            characterChange: 'parent',
+                            duration: 3000
+                        }
+                    ],
+                    4: [ // 鑰佸勾鏈?
+                        { 
+                            title: '閫€浼戠敓娲?, 
+                            description: '浜彈鎮犻棽鐨勬椂鍏?,
+                            animation: 'retire',
+                            sceneChange: 'garden',
+                            characterChange: 'peaceful',
+                            duration: 2500
+                        },
+                        { 
+                            title: '鍚ゴ寮勫瓩', 
+                            description: '涓庡瓩杈堢殑蹇箰鏃跺厜',
+                            animation: 'grandchild',
+                            sceneChange: 'addGrandchild',
+                            characterChange: 'grandparent',
+                            duration: 3000
+                        },
+                        { 
+                            title: '鍥炲繂寰€鏄?, 
+                            description: '鍥炴湜浜虹敓鐨勭編濂?,
+                            animation: 'memories',
+                            sceneChange: 'memories',
+                            characterChange: 'nostalgic',
+                            duration: 3500
+                        },
+                        { 
+                            title: '浼犳壙鏅烘収', 
+                            description: '灏嗙粡楠屼紶缁欏悗浠?,
+                            animation: 'wisdom',
+                            sceneChange: 'teaching',
+                            characterChange: 'wise',
+                            duration: 3000
+                        }
+                    ]
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                try {
+                    this.status.textContent = '娓告垙宸插噯澶囧氨缁?- 鐐瑰嚮寮€濮嬶紒';
+                    this.canvas.addEventListener('click', (e) => this.handleClick(e));
+                    this.showStartScreen();
+                    console.log('EnhancedGame initialized successfully');
+                } catch (error) {
+                    this.showError('鍒濆鍖栧け璐? ' + error.message);
+                    console.error('Init error:', error);
+                }
+            }
+            
+            showStartScreen() {
+                const ctx = this.ctx;
+                
+                // 娓呯┖鐢诲竷
+                ctx.fillStyle = '#1a1a2e';
+                ctx.fillRect(0, 0, 900, 700);
+                
+                // 鏍囬
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 42px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('澧炲己鐗堜汉鐢熸梾绋?, 450, 200);
+                
+                // 鍓爣棰?
+                ctx.font = '24px Arial';
+                ctx.fillStyle = '#cccccc';
+                ctx.fillText('浣撻獙鏈夊姩鐢荤殑瀹屾暣浜虹敓', 450, 240);
+                
+                // 寮€濮嬫寜閽?
+                ctx.fillStyle = '#4ecdc4';
+                ctx.fillRect(350, 300, 200, 80);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(350, 300, 200, 80);
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 28px Arial';
+                ctx.fillText('寮€濮嬫梾绋?, 450, 350);
+                
+                // 棰勮瑙掕壊
+                this.drawCharacter(450, 450, 0, 'idle', 'happy');
+                
+                // 璇存槑鏂囧瓧
+                ctx.fillStyle = '#999999';
+                ctx.font = '18px Arial';
+                ctx.fillText('鐐瑰嚮寮€濮嬫寜閽紝浣撻獙涓板瘜鐨勪汉鐢熷姩鐢?, 450, 520);
+            }
+            
+            drawCharacter(x, y, stage, animation, emotion) {
+                const ctx = this.ctx;
+                
+                // 濠村効鏈熶娇鐢ㄥ皬灏忕殑濠村効妯″瀷
+                if (stage === 0) {
+                    this.drawBabyCharacter(x, y, animation, emotion);
+                    return;
+                }
+                
+                const size = this.character.size;
+                
+                // 瑙掕壊棰滆壊
+                const characterColor = '#1a1a1a';
+                const outlineColor = '#ffffff';
+                const accentColor = '#ff6b6b';
+                
+                // 鍔ㄧ敾鍋忕Щ
+                let animOffset = 0;
+                let armOffset = 0;
+                let legOffset = 0;
+                let headTilt = 0;
+                
+                // 鏍规嵁鍔ㄧ敾绫诲瀷璋冩暣
+                switch (animation) {
+                    case 'walking':
+                    case 'firstwalk':
+                        animOffset = Math.sin(Date.now() / 200) * 3;
+                        armOffset = Math.sin(Date.now() / 150) * 8;
+                        legOffset = Math.sin(Date.now() / 180) * 5;
+                        break;
+                    case 'dancing':
+                    case 'perform':
+                        animOffset = Math.sin(Date.now() / 250) * 8;
+                        armOffset = Math.sin(Date.now() / 200) * 15;
+                        headTilt = Math.sin(Date.now() / 300) * 5;
+                        break;
+                    case 'rollover':
+                        headTilt = Math.sin(Date.now() / 400) * 20;
+                        animOffset = Math.sin(Date.now() / 500) * 5;
+                        break;
+                    case 'bicycle':
+                        animOffset = Math.sin(Date.now() / 150) * 2;
+                        legOffset = Math.sin(Date.now() / 100) * 10;
+                        break;
+                    case 'study':
+                        armOffset = Math.sin(Date.now() / 800) * 3;
+                        headTilt = -10; // 浣庡ご鐪嬩功
+                        break;
+                    case 'wedding':
+                        animOffset = Math.sin(Date.now() / 400) * 2;
+                        armOffset = 15; // 涓炬墜搴嗙
+                        break;
+                }
+                
+                // 鏍规嵁濮垮娍璋冩暣浣嶇疆
+                let postureOffset = 0;
+                if (this.character.posture === 'sitting') {
+                    postureOffset = 15;
+                }
+                
+                // 淇濆瓨涓婁笅鏂?
+                ctx.save();
+                ctx.translate(x, y + animOffset + postureOffset);
+                ctx.rotate(headTilt * Math.PI / 180);
+                
+                // 缁樺埗闃村奖
+                ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                ctx.beginPath();
+                ctx.ellipse(0, size/2 + 10, size/2, size/8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 澶撮儴
+                ctx.fillStyle = characterColor;
+                ctx.beginPath();
+                ctx.arc(0, -size/2, size/3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = outlineColor;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                
+                // 韬綋 - 姝ｅ父绔欑珛濮垮娍
+                ctx.fillStyle = characterColor;
+                ctx.fillRect(-size/3, -size/4, size*2/3, size/2);
+                ctx.strokeRect(-size/3, -size/4, size*2/3, size/2);
+                
+                // 鎵嬭噦锛堝甫鍔ㄧ敾锛?
+                ctx.fillStyle = characterColor;
+                ctx.fillRect(-size/2, -size/6 + armOffset, size/4, size/4);
+                ctx.strokeRect(-size/2, -size/6 + armOffset, size/4, size/4);
+                ctx.fillRect(size/4, -size/6 - armOffset, size/4, size/4);
+                ctx.strokeRect(size/4, -size/6 - armOffset, size/4, size/4);
+                
+                // 鑵块儴 - 姝ｅ父绔欑珛鐨勮吙
+                ctx.fillStyle = characterColor;
+                ctx.fillRect(-size/6, size/4, size/8, size/3 + legOffset);
+                ctx.strokeRect(-size/6, size/4, size/8, size/3 + legOffset);
+                ctx.fillRect(size/12, size/4, size/8, size/3 - legOffset);
+                ctx.strokeRect(size/12, size/4, size/8, size/3 - legOffset);
+                
+                // 琛ㄦ儏
+                ctx.fillStyle = outlineColor;
+                
+                // 鏍规嵁鎯呯华璋冩暣鐪肩潧
+                if (emotion === 'happy' || emotion === 'excited' || emotion === 'love') {
+                    // 鐪溂绗?
+                    ctx.fillRect(-12, -size/2 - 1, 5, 3);
+                    ctx.fillRect(7, -size/2 - 1, 5, 3);
+                } else if (emotion === 'confused' || emotion === 'nervous') {
+                    // 鍥版儜鐨勭溂绁?
+                    ctx.fillRect(-12, -size/2 - 3, 5, 5);
+                    ctx.fillRect(7, -size/2 - 3, 5, 5);
+                } else {
+                    // 姝ｅ父鐪肩潧
+                    ctx.fillRect(-12, -size/2 - 3, 5, 4);
+                    ctx.fillRect(7, -size/2 - 3, 5, 4);
+                }
+                
+                // 鍢村反鏍规嵁鎯呯华鍙樺寲
+                ctx.strokeStyle = outlineColor;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                
+                if (emotion === 'happy' || emotion === 'excited' || emotion === 'love') {
+                    // 澶х瑧
+                    ctx.arc(0, -size/2 + 12, 10, 0, Math.PI);
+                } else if (emotion === 'confused' || emotion === 'nervous') {
+                    // 鍥版儜鐨勫槾
+                    ctx.arc(0, -size/2 + 15, 6, Math.PI, 0);
+                } else if (emotion === 'wise' || emotion === 'peaceful') {
+                    // 骞抽潤鐨勫井绗?
+                    ctx.arc(0, -size/2 + 10, 6, 0, Math.PI);
+                } else {
+                    // 鏅€氳〃鎯?
+                    ctx.moveTo(-5, -size/2 + 10);
+                    ctx.lineTo(5, -size/2 + 10);
+                }
+                ctx.stroke();
+                
+                // 闃舵瑁呴グ
+                this.drawStageDecorations(ctx, stage, size, accentColor, outlineColor, animation);
+                
+                ctx.restore();
+            }
+            
+            drawBabyCharacter(x, y, animation, emotion) {
+                const ctx = this.ctx;
+                
+                // 濠村効鍔ㄧ敾鍋忕Щ
+                let animOffset = 0;
+                let armOffset = 0;
+                let headTilt = 0;
+                
+                // 鏍规嵁鍔ㄧ敾绫诲瀷璋冩暣
+                switch (animation) {
+                    case 'rollover':
+                        headTilt = Math.sin(Date.now() / 400) * 15;
+                        animOffset = Math.sin(Date.now() / 500) * 3;
+                        break;
+                    case 'smile':
+                        animOffset = Math.sin(Date.now() / 300) * 2;
+                        break;
+                    case 'firstwalk':
+                        animOffset = Math.sin(Date.now() / 200) * 2;
+                        armOffset = Math.sin(Date.now() / 150) * 5;
+                        break;
+                    default:
+                        animOffset = Math.sin(Date.now() / 400) * 1;
+                        break;
+                }
+                
+                // 淇濆瓨涓婁笅鏂?
+                ctx.save();
+                ctx.translate(x, y + animOffset + 20); // 濠村効鏇翠綆涓€浜?
+                ctx.rotate(headTilt * Math.PI / 180);
+                
+                // 濠村効鍏夌幆锛堝井寮辩殑锛?
+                const glowSize = 40 + Math.sin(Date.now() / 300) * 5;
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, glowSize);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, glowSize, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 缁樺埗灏忓┐鍎匡紙浣跨敤鍑虹敓鍔ㄧ敾涓殑濠村効妯″瀷锛?
+                const babySize = 30;
+                const characterColor = '#ffb3ba'; // 绮夎壊濠村効
+                const outlineColor = '#ffffff';
+                
+                // 缁樺埗闃村奖
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.beginPath();
+                ctx.ellipse(0, babySize/2 + 5, babySize/2, babySize/8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 澶撮儴
+                ctx.fillStyle = characterColor;
+                ctx.beginPath();
+                ctx.arc(0, -babySize/2, babySize/3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = outlineColor;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // 韬綋
+                ctx.fillStyle = characterColor;
+                ctx.fillRect(-babySize/4, -babySize/4, babySize/2, babySize/2);
+                ctx.strokeRect(-babySize/4, -babySize/4, babySize/2, babySize/2);
+                
+                // 鎵嬭噦锛堝甫鍔ㄧ敾锛?
+                ctx.fillRect(-babySize/3, -babySize/8 + armOffset, babySize/6, babySize/4);
+                ctx.strokeRect(-babySize/3, -babySize/8 + armOffset, babySize/6, babySize/4);
+                ctx.fillRect(babySize/6, -babySize/8 - armOffset, babySize/6, babySize/4);
+                ctx.strokeRect(babySize/6, -babySize/8 - armOffset, babySize/6, babySize/4);
+                
+                // 鑵?
+                ctx.fillRect(-babySize/8, babySize/4, babySize/12, babySize/4);
+                ctx.strokeRect(-babySize/8, babySize/4, babySize/12, babySize/4);
+                ctx.fillRect(babySize/24, babySize/4, babySize/12, babySize/4);
+                ctx.strokeRect(babySize/24, babySize/4, babySize/12, babySize/4);
+                
+                // 琛ㄦ儏 - 澶х溂鐫?
+                ctx.fillStyle = outlineColor;
+                if (emotion === 'happy' || emotion === 'excited' || emotion === 'love') {
+                    // 鐪溂绗?
+                    ctx.fillRect(-6, -babySize/2 - 1, 3, 2);
+                    ctx.fillRect(3, -babySize/2 - 1, 3, 2);
+                } else {
+                    // 澶х溂鐫?
+                    ctx.fillRect(-6, -babySize/2 - 2, 3, 3);
+                    ctx.fillRect(3, -babySize/2 - 2, 3, 3);
+                }
+                
+                // 寰瑧
+                ctx.strokeStyle = outlineColor;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                if (emotion === 'happy' || emotion === 'excited' || emotion === 'love') {
+                    ctx.arc(0, -babySize/2 + 8, 8, 0, Math.PI);
+                } else {
+                    ctx.arc(0, -babySize/2 + 8, 6, 0, Math.PI);
+                }
+                ctx.stroke();
+                
+                // 濂剁摱
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(babySize/4, -babySize/12, 6, 12);
+                ctx.strokeRect(babySize/4, -babySize/12, 6, 12);
+                ctx.fillStyle = '#ff6b6b';
+                ctx.beginPath();
+                ctx.arc(babySize/4 + 3, -babySize/12 - 3, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+            
+            // ==================== 浜嬩欢鍔ㄧ敾寮曟搸 ====================
+            
+            startEventAnimation(eventData, eventId) {
+                console.log('Starting event animation:', eventData.animation);
+                console.log('Event data:', eventData);
+                
+                this.eventAnimations.currentAnimation = eventData.animation;
+                this.eventAnimations.animationTime = 0;
+                this.eventAnimations.animationPhase = 'intro';
+                this.eventAnimations.animationElements = [];
+                
+                // 鏍规嵁浜嬩欢绫诲瀷鍒濆鍖栧姩鐢诲厓绱?
+                this.initializeEventAnimation(eventData.animation, eventData);
+                
+                console.log('Event animation started successfully:', this.eventAnimations.currentAnimation);
+            }
+            
+            initializeEventAnimation(animationType, eventData) {
+                switch (animationType) {
+                    case 'smile':
+                        this.initializeSmileAnimation();
+                        break;
+                    case 'rollover':
+                        this.initRolloverAnimation(eventData);
+                        break;
+                    case 'standup':
+                        this.initStandupAnimation(eventData);
+                        break;
+                    case 'firstwalk':
+                        this.initFirstWalkAnimation(eventData);
+                        break;
+                    case 'kindergarten':
+                        this.initializeKindergartenAnimation();
+                        break;
+                    case 'makefriend':
+                        this.initializeMakeFriendAnimation();
+                        break;
+                    case 'bicycle':
+                        this.initializeBicycleAnimation();
+                        break;
+                    case 'perform':
+                        this.initializePerformAnimation();
+                        break;
+                    case 'study':
+                        this.initializeStudyAnimation();
+                        break;
+                    case 'confused':
+                        this.initializeConfusedAnimation();
+                        break;
+                    case 'love':
+                        this.initializeLoveAnimation();
+                        break;
+                    case 'decision':
+                        this.initializeDecisionAnimation();
+                        break;
+                    case 'job':
+                        this.initializeJobAnimation();
+                        break;
+                    case 'truelove':
+                        this.initializeTrueLoveAnimation();
+                        break;
+                    case 'wedding':
+                        this.initializeWeddingAnimation();
+                        break;
+                    case 'baby':
+                        this.initializeBabyAnimation();
+                        break;
+                    case 'retire':
+                        this.initializeRetireAnimation();
+                        break;
+                    case 'grandchild':
+                        this.initializeGrandchildAnimation();
+                        break;
+                    case 'memories':
+                        this.initializeMemoriesAnimation();
+                        break;
+                    case 'wisdom':
+                        this.initializeWisdomAnimation();
+                        break;
+                }
+            }
+            
+            // ==================== 绗竴娆″井绗戝姩鐢?(400+ 琛? ====================
+            
+            initializeSmileAnimation() {
+                // 娓呯┖鐜版湁鍏冪礌
+                this.eventAnimations.animationElements = [];
+                
+                // 鍒涘缓濡堝瑙掕壊
+                this.eventAnimations.animationElements.push({
+                    type: 'mother',
+                    x: 200,
+                    y: 350,
+                    targetX: 300,
+                    targetY: 350,
+                    size: 60,
+                    emotion: 'loving',
+                    animation: 'approaching',
+                    animationFrame: 0,
+                    visible: false,
+                    alpha: 0,
+                    targetAlpha: 1,
+                    phase: 'entering',
+                    armPosition: 0,
+                    headTilt: 0,
+                    eyeExpression: 'gentle',
+                    mouthCurve: 0.5,
+                    clothingColor: '#ff9999',
+                    hairColor: '#8B4513',
+                    accessories: ['necklace', 'earrings'],
+                    movementSpeed: 2,
+                    breathingOffset: 0,
+                    blinkTimer: 0,
+                    speechBubble: null,
+                    interactionRadius: 80
+                });
+                
+                // 鍒涘缓濠村効搴?姣瓙
+                this.eventAnimations.animationElements.push({
+                    type: 'babyBed',
+                    x: 450,
+                    y: 420,
+                    width: 120,
+                    height: 60,
+                    color: '#ffb3ba',
+                    pattern: 'dots',
+                    pillowColor: '#ffffff',
+                    blanketColor: '#87ceeb',
+                    blanketAnimation: 0,
+                    softness: 0,
+                    warmth: 1,
+                    comfort: 1,
+                    decorations: ['teddy', 'mobile'],
+                    mobile: {
+                        rotation: 0,
+                        items: ['star', 'moon', 'cloud'],
+                        colors: ['#ffe66d', '#87ceeb', '#ffffff']
+                    }
+                });
+                
+                // 鍒涘缓鐜╁叿
+                this.eventAnimations.animationElements.push({
+                    type: 'toy',
+                    subtype: 'rattle',
+                    x: 380,
+                    y: 400,
+                    size: 15,
+                    color: '#ff6b6b',
+                    animation: 'idle',
+                    rotation: 0,
+                    bounce: 0,
+                    sparkle: 0,
+                    sound: false,
+                    interacted: false
+                });
+                
+                this.eventAnimations.animationElements.push({
+                    type: 'toy',
+                    subtype: 'stuffedAnimal',
+                    x: 520,
+                    y: 410,
+                    size: 20,
+                    color: '#90ee90',
+                    animalType: 'bear',
+                    animation: 'sleeping',
+                    cuteness: 1,
+                    softness: 1,
+                    comfort: 1
+                });
+                
+                // 鍒涘缓鐜鍏夋晥
+                this.eventAnimations.animationElements.push({
+                    type: 'ambientLight',
+                    x: 450,
+                    y: 200,
+                    radius: 200,
+                    intensity: 0.3,
+                    color: '#ffe66d',
+                    warmth: 0.8,
+                    softness: 0.9,
+                    animation: 'gentle',
+                    rays: []
+                });
+                
+                // 鍒涘缓闊崇鏁堟灉
+                for (let i = 0; i < 5; i++) {
+                    this.eventAnimations.animationElements.push({
+                        type: 'musicNote',
+                        x: 250 + i * 30,
+                        y: 300,
+                        size: 8 + Math.random() * 4,
+                        note: ['鈾?, '鈾?, '鈾?][Math.floor(Math.random() * 3)],
+                        color: '#ff69b4',
+                        animation: 'floating',
+                        speed: 1 + Math.random(),
+                        amplitude: 20 + Math.random() * 10,
+                        phase: Math.random() * Math.PI * 2,
+                        alpha: 0,
+                        targetAlpha: 0.8,
+                        lifespan: 3000,
+                        age: 0
+                    });
+                }
+                
+                // 鍒涘缓蹇冨舰绮掑瓙绯荤粺
+                this.eventAnimations.animationElements.push({
+                    type: 'heartParticleSystem',
+                    x: 375,
+                    y: 300,
+                    particles: [],
+                    emissionRate: 0,
+                    maxParticles: 15,
+                    active: false,
+                    colors: ['#ff69b4', '#ff1493', '#ffc0cb'],
+                    sizes: [8, 12, 16],
+                    lifespans: [2000, 3000, 4000]
+                });
+                
+                // 鍒涘缓娓╂殩鍏夋檿鏁堟灉
+                this.eventAnimations.animationElements.push({
+                    type: 'warmGlow',
+                    x: 450,
+                    y: 380,
+                    radius: 0,
+                    targetRadius: 100,
+                    intensity: 0,
+                    targetIntensity: 0.4,
+                    color: '#ffe4b5',
+                    pulsation: 0,
+                    warmth: 1,
+                    comfort: 1,
+                    love: 1
+                });
+                
+                // 鍒涘缓鑳屾櫙瑁呴グ
+                this.eventAnimations.animationElements.push({
+                    type: 'roomDecoration',
+                    elements: [
+                        {
+                            type: 'window',
+                            x: 100,
+                            y: 200,
+                            width: 80,
+                            height: 100,
+                            light: 0.6,
+                            curtains: '#87ceeb',
+                            view: 'garden',
+                            sunlight: true
+                        },
+                        {
+                            type: 'picture',
+                            x: 600,
+                            y: 250,
+                            width: 60,
+                            height: 40,
+                            content: 'family',
+                            frame: '#8B4513',
+                            love: 1
+                        },
+                        {
+                            type: 'plant',
+                            x: 150,
+                            y: 450,
+                            size: 30,
+                            type: 'flower',
+                            color: '#ff69b4',
+                            health: 1,
+                            growth: 0.8
+                        }
+                    ]
+                });
+                
+                // 鍒涘缓鎯呮劅姘涘洿
+                this.eventAnimations.animationElements.push({
+                    type: 'emotionalAtmosphere',
+                    love: 0,
+                    targetLove: 1,
+                    warmth: 0,
+                    targetWarmth: 1,
+                    joy: 0,
+                    targetJoy: 1,
+                    connection: 0,
+                    targetConnection: 1,
+                    bonding: 0,
+                    targetBonding: 1,
+                    manifestations: {
+                        colorShift: 0,
+                        lightIntensity: 0,
+                        particleDensity: 0,
+                        musicVolume: 0,
+                        heartRate: 0
+                    }
+                });
+                
+                // 鍒涘缓澹伴煶鏁堟灉绯荤粺
+                this.eventAnimations.animationElements.push({
+                    type: 'soundEffects',
+                    currentSounds: [],
+                    ambientSounds: ['lullaby', 'heartbeat', 'breathing'],
+                    eventSounds: ['giggle', 'coo', 'motherVoice'],
+                    volume: 0,
+                    targetVolume: 0.3,
+                    mood: 'peaceful',
+                    harmony: 1
+                });
+                
+                // 璁剧疆鍔ㄧ敾闃舵鏃堕棿杞?
+                this.eventAnimations.timeline = {
+                    phase1: { start: 0, end: 800, name: 'setup' },
+                    phase2: { start: 800, end: 1600, name: 'motherApproaches' },
+                    phase3: { start: 1600, end: 2400, name: 'interaction' },
+                    phase4: { start: 2400, end: 3200, name: 'firstSmile' },
+                    phase5: { start: 3200, end: 4000, name: 'celebration' }
+                };
+            }
+            
+            updateSmileAnimation() {
+                const time = this.eventAnimations.animationTime;
+                const elements = this.eventAnimations.animationElements;
+                
+                // 闃舵1: 璁剧疆鍦烘櫙 (0-800ms)
+                if (time >= 0 && time < 800) {
+                    this.updateSmilePhase1(time, elements);
+                }
+                // 闃舵2: 濡堝鎺ヨ繎 (800-1600ms)
+                else if (time >= 800 && time < 1600) {
+                    this.updateSmilePhase2(time - 800, elements);
+                }
+                // 闃舵3: 浜掑姩寮€濮?(1600-2400ms)
+                else if (time >= 1600 && time < 2400) {
+                    this.updateSmilePhase3(time - 1600, elements);
+                }
+                // 闃舵4: 绗竴娆″井绗?(2400-3200ms)
+                else if (time >= 2400 && time < 3200) {
+                    this.updateSmilePhase4(time - 2400, elements);
+                }
+                // 闃舵5: 搴嗙 (3200-4000ms)
+                else if (time >= 3200 && time < 4000) {
+                    this.updateSmilePhase5(time - 3200, elements);
+                }
+                
+                // 鏇存柊鎵€鏈夊姩鐢诲厓绱?
+                this.updateSmileElements(elements);
+            }
+            
+            updateSmilePhase1(phaseTime, elements) {
+                // 鐜鍏夋晥娓愬叆
+                const ambientLight = elements.find(e => e.type === 'ambientLight');
+                if (ambientLight) {
+                    ambientLight.intensity = Math.min(0.3, phaseTime / 800 * 0.3);
+                    ambientLight.animation = 'gentle';
+                }
+                
+                // 鎴块棿瑁呴グ鏄剧幇
+                const roomDecor = elements.find(e => e.type === 'roomDecoration');
+                if (roomDecor) {
+                    roomDecor.elements.forEach(element => {
+                        if (element.type === 'window') {
+                            element.light = Math.min(0.6, phaseTime / 800 * 0.6);
+                        }
+                    });
+                }
+                
+                // 濠村効搴婂姩鐢?
+                const babyBed = elements.find(e => e.type === 'babyBed');
+                if (babyBed) {
+                    babyBed.blanketAnimation = Math.sin(phaseTime / 200) * 0.1;
+                    babyBed.mobile.rotation += 0.02;
+                }
+                
+                // 鐜╁叿杞诲井鍔ㄧ敾
+                const toys = elements.filter(e => e.type === 'toy');
+                toys.forEach(toy => {
+                    if (toy.subtype === 'rattle') {
+                        toy.sparkle = Math.sin(phaseTime / 300) * 0.3;
+                    }
+                });
+            }
+            
+            updateSmilePhase2(phaseTime, elements) {
+                // 濡堝杩涘叆鍦烘櫙
+                const mother = elements.find(e => e.type === 'mother');
+                if (mother) {
+                    mother.visible = true;
+                    mother.alpha = Math.min(1, phaseTime / 400);
+                    
+                    // 濡堝绉诲姩鍒扮洰鏍囦綅缃?
+                    const progress = Math.min(1, phaseTime / 800);
+                    const easeProgress = 1 - Math.pow(1 - progress, 3); // 缂撳姩鍑芥暟
+                    mother.x = 200 + (mother.targetX - 200) * easeProgress;
+                    mother.y = 350 + (mother.targetY - 350) * easeProgress;
+                    
+                    // 濡堝鍔ㄧ敾
+                    mother.animationFrame += 0.1;
+                    mother.breathingOffset = Math.sin(phaseTime / 200) * 2;
+                    mother.armPosition = Math.sin(phaseTime / 400) * 0.2;
+                    
+                    // 鐪ㄧ溂鍔ㄧ敾
+                    mother.blinkTimer += 16;
+                    if (mother.blinkTimer > 2000) {
+                        mother.eyeExpression = 'blinking';
+                        if (mother.blinkTimer > 2200) {
+                            mother.eyeExpression = 'gentle';
+                            mother.blinkTimer = 0;
+                        }
+                    }
+                }
+                
+                // 闊崇寮€濮嬪嚭鐜?
+                const musicNotes = elements.filter(e => e.type === 'musicNote');
+                musicNotes.forEach((note, index) => {
+                    if (phaseTime > index * 100) {
+                        note.alpha = Math.min(note.targetAlpha, (phaseTime - index * 100) / 300);
+                        note.y -= note.speed;
+                        note.x += Math.sin(note.phase + phaseTime / 200) * 0.5;
+                    }
+                });
+                
+                // 娓╂殩鍏夋檿寮€濮?
+                const warmGlow = elements.find(e => e.type === 'warmGlow');
+                if (warmGlow && phaseTime > 400) {
+                    const glowProgress = (phaseTime - 400) / 400;
+                    warmGlow.radius = warmGlow.targetRadius * glowProgress;
+                    warmGlow.intensity = warmGlow.targetIntensity * glowProgress;
+                    warmGlow.pulsation = Math.sin(phaseTime / 300) * 0.1;
+                }
+            }
+            
+            updateSmilePhase3(phaseTime, elements) {
+                // 濡堝寮€濮嬩簰鍔?
+                const mother = elements.find(e => e.type === 'mother');
+                if (mother) {
+                    mother.animation = 'interacting';
+                    mother.headTilt = Math.sin(phaseTime / 300) * 5;
+                    mother.armPosition = 0.5 + Math.sin(phaseTime / 200) * 0.3;
+                    mother.mouthCurve = 0.7 + Math.sin(phaseTime / 400) * 0.2;
+                    
+                    // 璇磋瘽姘旀场
+                    if (phaseTime > 200 && phaseTime < 600) {
+                        mother.speechBubble = {
+                            text: "瀹濊礉锝?,
+                            alpha: Math.min(1, (phaseTime - 200) / 200),
+                            size: 1 + Math.sin(phaseTime / 100) * 0.1
+                        };
+                    } else {
+                        mother.speechBubble = null;
+                    }
+                }
+                
+                // 蹇冨舰绮掑瓙绯荤粺婵€娲?
+                const heartSystem = elements.find(e => e.type === 'heartParticleSystem');
+                if (heartSystem && phaseTime > 300) {
+                    heartSystem.active = true;
+                    heartSystem.emissionRate = 0.3;
+                    
+                    // 鐢熸垚蹇冨舰绮掑瓙
+                    if (Math.random() < heartSystem.emissionRate) {
+                        heartSystem.particles.push({
+                            x: heartSystem.x + (Math.random() - 0.5) * 40,
+                            y: heartSystem.y,
+                            vx: (Math.random() - 0.5) * 2,
+                            vy: -1 - Math.random(),
+                            size: heartSystem.sizes[Math.floor(Math.random() * heartSystem.sizes.length)],
+                            color: heartSystem.colors[Math.floor(Math.random() * heartSystem.colors.length)],
+                            alpha: 1,
+                            life: 0,
+                            maxLife: heartSystem.lifespans[Math.floor(Math.random() * heartSystem.lifespans.length)],
+                            rotation: Math.random() * Math.PI * 2,
+                            rotationSpeed: (Math.random() - 0.5) * 0.1
+                        });
+                    }
+                }
+                
+                // 鎯呮劅姘涘洿澧炲己
+                const atmosphere = elements.find(e => e.type === 'emotionalAtmosphere');
+                if (atmosphere) {
+                    const progress = phaseTime / 800;
+                    atmosphere.love = atmosphere.targetLove * progress * 0.5;
+                    atmosphere.warmth = atmosphere.targetWarmth * progress * 0.6;
+                    atmosphere.connection = atmosphere.targetConnection * progress * 0.4;
+                }
+                
+                // 鐜╁叿鍝嶅簲
+                const rattle = elements.find(e => e.type === 'toy' && e.subtype === 'rattle');
+                if (rattle && phaseTime > 400) {
+                    rattle.animation = 'excited';
+                    rattle.bounce = Math.sin(phaseTime / 150) * 3;
+                    rattle.rotation += 0.1;
+                    rattle.sparkle = 0.8;
+                }
+            }
+            
+            updateSmilePhase4(phaseTime, elements) {
+                // 杩欐槸鍏抽敭鏃跺埢 - 绗竴娆″井绗?
+                const progress = phaseTime / 800;
+                
+                // 瑙掕壊寰瑧鍔ㄧ敾鍦╠rawBabyCharacter涓鐞?
+                this.character.emotion = 'happy';
+                this.character.animation = 'smile';
+                this.character.specialAnimation = 'firstSmile';
+                this.character.specialAnimationTime = phaseTime;
+                
+                // 濡堝鐨勫弽搴?
+                const mother = elements.find(e => e.type === 'mother');
+                if (mother) {
+                    mother.emotion = 'overjoyed';
+                    mother.mouthCurve = 1;
+                    mother.eyeExpression = 'sparkling';
+                    mother.armPosition = 1;
+                    mother.headTilt = 10;
+                    
+                    if (phaseTime > 200 && phaseTime < 600) {
+                        mother.speechBubble = {
+                            text: "绗竴娆″井绗戯紒",
+                            alpha: 1,
+                            size: 1.2 + Math.sin(phaseTime / 50) * 0.1,
+                            color: '#ff69b4'
+                        };
+                    }
+                }
+                
+                // 蹇冨舰绮掑瓙鐖嗗彂
+                const heartSystem = elements.find(e => e.type === 'heartParticleSystem');
+                if (heartSystem) {
+                    heartSystem.emissionRate = 1.5;
+                    
+                    // 鐗规畩鐖嗗彂鏁堟灉
+                    if (phaseTime > 300 && phaseTime < 350) {
+                        for (let i = 0; i < 8; i++) {
+                            const angle = (i / 8) * Math.PI * 2;
+                            heartSystem.particles.push({
+                                x: heartSystem.x,
+                                y: heartSystem.y,
+                                vx: Math.cos(angle) * 3,
+                                vy: Math.sin(angle) * 3,
+                                size: 16,
+                                color: '#ff1493',
+                                alpha: 1,
+                                life: 0,
+                                maxLife: 2000,
+                                rotation: angle,
+                                rotationSpeed: 0.1,
+                                special: true
+                            });
+                        }
+                    }
+                }
+                
+                // 娓╂殩鍏夋檿杈惧埌鏈€澶?
+                const warmGlow = elements.find(e => e.type === 'warmGlow');
+                if (warmGlow) {
+                    warmGlow.intensity = warmGlow.targetIntensity;
+                    warmGlow.pulsation = Math.sin(phaseTime / 100) * 0.2;
+                }
+                
+                // 鐜鍏夋晥澧炲己
+                const ambientLight = elements.find(e => e.type === 'ambientLight');
+                if (ambientLight) {
+                    ambientLight.intensity = 0.5;
+                    ambientLight.color = '#ffe4b5';
+                }
+                
+                // 鎯呮劅姘涘洿杈惧埌楂樻疆
+                const atmosphere = elements.find(e => e.type === 'emotionalAtmosphere');
+                if (atmosphere) {
+                    atmosphere.love = atmosphere.targetLove;
+                    atmosphere.joy = atmosphere.targetJoy * progress;
+                    atmosphere.bonding = atmosphere.targetBonding * progress;
+                    atmosphere.manifestations.heartRate = 1.5;
+                }
+            }
+            
+            updateSmilePhase5(phaseTime, elements) {
+                // 搴嗙闃舵
+                const progress = phaseTime / 800;
+                
+                // 鎵€鏈夊厓绱犵殑搴嗙鍔ㄧ敾
+                const mother = elements.find(e => e.type === 'mother');
+                if (mother) {
+                    mother.animation = 'celebrating';
+                    mother.armPosition = 1 + Math.sin(phaseTime / 200) * 0.2;
+                    mother.headTilt = Math.sin(phaseTime / 300) * 8;
+                    mother.breathingOffset = Math.sin(phaseTime / 150) * 3;
+                    
+                    if (phaseTime < 400) {
+                        mother.speechBubble = {
+                            text: "澶浜嗭紒",
+                            alpha: 1 - progress * 0.5,
+                            size: 1.1,
+                            color: '#ff69b4'
+                        };
+                    }
+                }
+                
+                // 鐜╁叿搴嗙
+                const toys = elements.filter(e => e.type === 'toy');
+                toys.forEach(toy => {
+                    toy.animation = 'celebrating';
+                    toy.bounce = Math.sin(phaseTime / 100 + toy.x / 50) * 5;
+                    toy.rotation += 0.15;
+                    toy.sparkle = 1;
+                });
+                
+                // 闊崇椋炶垶
+                const musicNotes = elements.filter(e => e.type === 'musicNote');
+                musicNotes.forEach(note => {
+                    note.speed = 2;
+                    note.amplitude = 30;
+                    note.alpha = Math.max(0, 1 - progress);
+                });
+                
+                // 蹇冨舰绮掑瓙缁х画
+                const heartSystem = elements.find(e => e.type === 'heartParticleSystem');
+                if (heartSystem) {
+                    heartSystem.emissionRate = 0.8;
+                }
+                
+                // 鎯呮劅姘涘洿淇濇寔楂樻疆
+                const atmosphere = elements.find(e => e.type === 'emotionalAtmosphere');
+                if (atmosphere) {
+                    atmosphere.love = atmosphere.targetLove;
+                    atmosphere.warmth = atmosphere.targetWarmth;
+                    atmosphere.joy = atmosphere.targetJoy;
+                    atmosphere.connection = atmosphere.targetConnection;
+                    atmosphere.bonding = atmosphere.targetBonding;
+                }
+                
+                // 娓愬嚭鏁堟灉
+                if (progress > 0.7) {
+                    const fadeProgress = (progress - 0.7) / 0.3;
+                    elements.forEach(element => {
+                        if (element.alpha !== undefined) {
+                            element.alpha = Math.max(0, 1 - fadeProgress);
+                        }
+                    });
+                }
+            }
+            
+            updateSmileElements(elements) {
+                // 鏇存柊蹇冨舰绮掑瓙
+                const heartSystem = elements.find(e => e.type === 'heartParticleSystem');
+                if (heartSystem) {
+                    heartSystem.particles = heartSystem.particles.filter(particle => {
+                        particle.life += 16;
+                        particle.x += particle.vx;
+                        particle.y += particle.vy;
+                        particle.vy += 0.05; // 閲嶅姏
+                        particle.rotation += particle.rotationSpeed;
+                        particle.alpha = Math.max(0, 1 - particle.life / particle.maxLife);
+                        return particle.life < particle.maxLife;
+                    });
+                }
+                
+                // 鏇存柊闊崇
+                const musicNotes = elements.filter(e => e.type === 'musicNote');
+                musicNotes.forEach(note => {
+                    note.age += 16;
+                    note.phase += 0.05;
+                    if (note.age > note.lifespan) {
+                        note.alpha = Math.max(0, note.alpha - 0.02);
+                    }
+                });
+                
+                // 鏇存柊濠村効搴?
+                const babyBed = elements.find(e => e.type === 'babyBed');
+                if (babyBed) {
+                    babyBed.mobile.rotation += 0.01;
+                    babyBed.blanketAnimation = Math.sin(Date.now() / 1000) * 0.05;
+                }
+            }
+            
+            drawSmileAnimation() {
+                const elements = this.eventAnimations.animationElements;
+                const ctx = this.ctx;
+                
+                // 缁樺埗鎵€鏈夊姩鐢诲厓绱?
+                elements.forEach(element => {
+                    this.drawSmileElement(element, ctx);
+                });
+            }
+            
+            drawSmileElement(element, ctx) {
+                ctx.save();
+                
+                switch (element.type) {
+                    case 'mother':
+                        this.drawMotherCharacter(element, ctx);
+                        break;
+                    case 'babyBed':
+                        this.drawBabyBed(element, ctx);
+                        break;
+                    case 'toy':
+                        this.drawToy(element, ctx);
+                        break;
+                    case 'ambientLight':
+                        this.drawAmbientLight(element, ctx);
+                        break;
+                    case 'musicNote':
+                        this.drawMusicNote(element, ctx);
+                        break;
+                    case 'heartParticleSystem':
+                        this.drawHeartParticles(element, ctx);
+                        break;
+                    case 'warmGlow':
+                        this.drawWarmGlow(element, ctx);
+                        break;
+                    case 'roomDecoration':
+                        this.drawRoomDecoration(element, ctx);
+                        break;
+                    case 'emotionalAtmosphere':
+                        this.drawEmotionalAtmosphere(element, ctx);
+                        break;
+                }
+                
+                ctx.restore();
+            }
+            
+            drawMotherCharacter(mother, ctx) {
+                if (!mother.visible || mother.alpha <= 0) return;
+                
+                ctx.globalAlpha = mother.alpha;
+                ctx.translate(mother.x, mother.y + mother.breathingOffset);
+                ctx.rotate(mother.headTilt * Math.PI / 180);
+                
+                const size = mother.size;
+                
+                // 韬綋
+                ctx.fillStyle = mother.clothingColor;
+                ctx.fillRect(-size/3, -size/4, size*2/3, size/2);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-size/3, -size/4, size*2/3, size/2);
+                
+                // 澶撮儴
+                ctx.fillStyle = '#ffdbac';
+                ctx.beginPath();
+                ctx.arc(0, -size/2, size/3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // 澶村彂
+                ctx.fillStyle = mother.hairColor;
+                ctx.beginPath();
+                ctx.arc(0, -size/2 - 5, size/3 + 5, Math.PI, 0);
+                ctx.fill();
+                
+                // 鐪肩潧
+                ctx.fillStyle = '#000000';
+                if (mother.eyeExpression === 'gentle') {
+                    ctx.fillRect(-8, -size/2 - 3, 4, 3);
+                    ctx.fillRect(4, -size/2 - 3, 4, 3);
+                } else if (mother.eyeExpression === 'sparkling') {
+                    ctx.fillRect(-8, -size/2 - 3, 4, 3);
+                    ctx.fillRect(4, -size/2 - 3, 4, 3);
+                    // 闂厜鏁堟灉
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(-7, -size/2 - 2, 1, 1);
+                    ctx.fillRect(5, -size/2 - 2, 1, 1);
+                } else if (mother.eyeExpression === 'blinking') {
+                    ctx.fillRect(-8, -size/2 - 1, 4, 1);
+                    ctx.fillRect(4, -size/2 - 1, 4, 1);
+                }
+                
+                // 鍢村反
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                const mouthRadius = 6 + mother.mouthCurve * 4;
+                ctx.arc(0, -size/2 + 10, mouthRadius, 0, Math.PI * mother.mouthCurve);
+                ctx.stroke();
+                
+                // 鎵嬭噦
+                ctx.fillStyle = '#ffdbac';
+                const armY = -size/6 + Math.sin(mother.armPosition * Math.PI) * 10;
+                ctx.fillRect(-size/2, armY, size/4, size/4);
+                ctx.strokeRect(-size/2, armY, size/4, size/4);
+                ctx.fillRect(size/4, armY, size/4, size/4);
+                ctx.strokeRect(size/4, armY, size/4, size/4);
+                
+                // 璇磋瘽姘旀场
+                if (mother.speechBubble) {
+                    this.drawSpeechBubble(mother.speechBubble, ctx, 20, -size/2 - 20);
+                }
+            }
+            
+            drawSpeechBubble(bubble, ctx, x, y) {
+                ctx.save();
+                ctx.globalAlpha = bubble.alpha;
+                ctx.scale(bubble.size, bubble.size);
+                
+                // 姘旀场鑳屾櫙
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = bubble.color || '#000000';
+                ctx.lineWidth = 2;
+                
+                const width = bubble.text.length * 8 + 20;
+                const height = 30;
+                
+                ctx.beginPath();
+                ctx.roundRect(x - width/2, y - height, width, height, 10);
+                ctx.fill();
+                ctx.stroke();
+                
+                // 姘旀场灏惧反
+                ctx.beginPath();
+                ctx.moveTo(x - 10, y);
+                ctx.lineTo(x, y + 10);
+                ctx.lineTo(x + 10, y);
+                ctx.fill();
+                ctx.stroke();
+                
+                // 鏂囧瓧
+                ctx.fillStyle = bubble.color || '#000000';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(bubble.text, x, y - 10);
+                
+                ctx.restore();
+            }
+            
+            drawBabyBed(bed, ctx) {
+                ctx.translate(bed.x, bed.y);
+                
+                // 搴婃
+                ctx.fillStyle = bed.color;
+                ctx.fillRect(-bed.width/2, -bed.height/2, bed.width, bed.height);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-bed.width/2, -bed.height/2, bed.width, bed.height);
+                
+                // 鏋曞ご
+                ctx.fillStyle = bed.pillowColor;
+                ctx.beginPath();
+                ctx.ellipse(-bed.width/4, -bed.height/4, 20, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                
+                // 姣瓙
+                ctx.fillStyle = bed.blanketColor;
+                ctx.save();
+                ctx.translate(0, bed.blanketAnimation * 5);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, bed.width/3, bed.height/3, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+                
+                // 搴婂ご閾?
+                if (bed.mobile) {
+                    ctx.save();
+                    ctx.translate(0, -bed.height/2 - 20);
+                    ctx.rotate(bed.mobile.rotation);
+                    
+                    // 鏀灦
+                    ctx.strokeStyle = '#8B4513';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(0, -20);
+                    ctx.stroke();
+                    
+                    // 鎮寕鐗╁搧
+                    bed.mobile.items.forEach((item, index) => {
+                        const angle = (index / bed.mobile.items.length) * Math.PI * 2;
+                        const x = Math.cos(angle) * 25;
+                        const y = Math.sin(angle) * 25;
+                        
+                        ctx.fillStyle = bed.mobile.colors[index];
+                        ctx.beginPath();
+                        if (item === 'star') {
+                            this.drawStar(ctx, x, y, 5, 8, 4);
+                        } else if (item === 'moon') {
+                            ctx.arc(x, y, 6, 0, Math.PI * 1.5);
+                        } else if (item === 'cloud') {
+                            ctx.arc(x, y, 5, 0, Math.PI * 2);
+                        }
+                        ctx.fill();
+                    });
+                    
+                    ctx.restore();
+                }
+            }
+            
+            drawToy(toy, ctx) {
+                ctx.save();
+                ctx.globalAlpha = toy.sparkle;
+                ctx.translate(toy.x, toy.y + toy.bounce);
+                ctx.rotate(toy.rotation);
+                
+                if (toy.subtype === 'rattle') {
+                    // 鎽囬搩
+                    ctx.fillStyle = toy.color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, toy.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // 鎵嬫焺
+                    ctx.fillStyle = '#8B4513';
+                    ctx.fillRect(-2, toy.size, 4, toy.size);
+                    ctx.strokeRect(-2, toy.size, 4, toy.size);
+                    
+                    // 闂厜鏁堟灉
+                    if (toy.sparkle > 0.5) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = '12px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('鉁?, 0, -toy.size - 5);
+                    }
+                } else if (toy.subtype === 'stuffedAnimal') {
+                    // 姣涚粧鐜╁叿
+                    ctx.fillStyle = toy.color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, toy.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    
+                    // 鑰虫湹
+                    ctx.beginPath();
+                    ctx.arc(-toy.size/2, -toy.size/2, toy.size/3, 0, Math.PI * 2);
+                    ctx.arc(toy.size/2, -toy.size/2, toy.size/3, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 鐪肩潧
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(-toy.size/3, -toy.size/4, 3, 3);
+                    ctx.fillRect(toy.size/3 - 3, -toy.size/4, 3, 3);
+                    
+                    // 榧诲瓙
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+            
+            drawAmbientLight(light, ctx) {
+                if (light.intensity <= 0) return;
+                
+                ctx.save();
+                ctx.globalAlpha = light.intensity;
+                
+                const gradient = ctx.createRadialGradient(
+                    light.x, light.y, 0,
+                    light.x, light.y, light.radius
+                );
+                gradient.addColorStop(0, light.color);
+                gradient.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(light.x, light.y, light.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+            
+            drawMusicNote(note, ctx) {
+                if (note.alpha <= 0) return;
+                
+                ctx.save();
+                ctx.globalAlpha = note.alpha;
+                ctx.translate(note.x, note.y);
+                
+                ctx.fillStyle = note.color;
+                ctx.font = `${note.size}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.fillText(note.note, 0, 0);
+                
+                ctx.restore();
+            }
+            
+            drawHeartParticles(system, ctx) {
+                system.particles.forEach(particle => {
+                    if (particle.alpha <= 0) return;
+                    
+                    ctx.save();
+                    ctx.globalAlpha = particle.alpha;
+                    ctx.translate(particle.x, particle.y);
+                    ctx.rotate(particle.rotation);
+                    
+                    ctx.fillStyle = particle.color;
+                    ctx.font = `${particle.size}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText('馃挅', 0, 0);
+                    
+                    ctx.restore();
+                });
+            }
+            
+            drawWarmGlow(glow, ctx) {
+                if (glow.intensity <= 0) return;
+                
+                ctx.save();
+                ctx.globalAlpha = glow.intensity + glow.pulsation;
+                
+                const gradient = ctx.createRadialGradient(
+                    glow.x, glow.y, 0,
+                    glow.x, glow.y, glow.radius
+                );
+                gradient.addColorStop(0, glow.color);
+                gradient.addColorStop(0.7, 'rgba(255, 228, 181, 0.3)');
+                gradient.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(glow.x, glow.y, glow.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+            
+            drawRoomDecoration(decoration, ctx) {
+                decoration.elements.forEach(element => {
+                    ctx.save();
+                    
+                    if (element.type === 'window') {
+                        ctx.translate(element.x, element.y);
+                        
+                        // 绐楁
+                        ctx.fillStyle = '#8B4513';
+                        ctx.fillRect(-element.width/2, -element.height/2, element.width, element.height);
+                        
+                        // 鐜荤拑
+                        ctx.fillStyle = `rgba(135, 206, 235, ${element.light})`;
+                        ctx.fillRect(-element.width/2 + 5, -element.height/2 + 5, element.width - 10, element.height - 10);
+                        
+                        // 绐楀笜
+                        ctx.fillStyle = element.curtains;
+                        ctx.fillRect(-element.width/2, -element.height/2, 10, element.height);
+                        ctx.fillRect(element.width/2 - 10, -element.height/2, 10, element.height);
+                        
+                        // 闃冲厜鏁堟灉
+                        if (element.sunlight && element.light > 0.3) {
+                            ctx.strokeStyle = '#ffe66d';
+                            ctx.lineWidth = 2;
+                            ctx.globalAlpha = element.light - 0.3;
+                            for (let i = 0; i < 5; i++) {
+                                ctx.beginPath();
+                                ctx.moveTo(-element.width/2 + i * 10, -element.height/2);
+                                ctx.lineTo(element.width/2 + i * 20, element.height/2 + 50);
+                                ctx.stroke();
+                            }
+                        }
+                    } else if (element.type === 'picture') {
+                        ctx.translate(element.x, element.y);
+                        
+                        // 鐩告
+                        ctx.fillStyle = element.frame;
+                        ctx.fillRect(-element.width/2, -element.height/2, element.width, element.height);
+                        
+                        // 鍥剧墖鍐呭
+                        ctx.fillStyle = '#ffb3ba';
+                        ctx.fillRect(-element.width/2 + 3, -element.height/2 + 3, element.width - 6, element.height - 6);
+                        
+                        // 绠€鍗曠殑瀹跺涵鍥炬
+                        ctx.fillStyle = '#000000';
+                        ctx.font = '12px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('馃懆鈥嶐煈┾€嶐煈р€嶐煈?, 0, 0);
+                    } else if (element.type === 'plant') {
+                        ctx.translate(element.x, element.y);
+                        
+                        // 鑺辩泦
+                        ctx.fillStyle = '#8B4513';
+                        ctx.fillRect(-element.size/3, 0, element.size*2/3, element.size/2);
+                        
+                        // 妞嶇墿
+                        ctx.fillStyle = '#90ee90';
+                        ctx.beginPath();
+                        ctx.arc(0, -element.size/3, element.size/3, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // 鑺辨湹
+                        if (element.type === 'flower') {
+                            ctx.fillStyle = element.color;
+                            ctx.font = '16px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('馃尭', 0, -element.size/2);
+                        }
+                    }
+                    
+                    ctx.restore();
+                });
+            }
+            
+            drawEmotionalAtmosphere(atmosphere, ctx) {
+                // 鎯呮劅姘涘洿閫氳繃棰滆壊鍙犲姞鍜屽厜鏁堜綋鐜?
+                if (atmosphere.love > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = atmosphere.love * 0.1;
+                    ctx.fillStyle = '#ff69b4';
+                    ctx.fillRect(0, 0, 900, 700);
+                    ctx.restore();
+                }
+                
+                if (atmosphere.warmth > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = atmosphere.warmth * 0.05;
+                    ctx.fillStyle = '#ffe4b5';
+                    ctx.fillRect(0, 0, 900, 700);
+                    ctx.restore();
+                }
+                
+                if (atmosphere.joy > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = atmosphere.joy * 0.03;
+                    ctx.fillStyle = '#ffe66d';
+                    ctx.fillRect(0, 0, 900, 700);
+                    ctx.restore();
+                }
+            }
+            
+            drawStar(ctx, x, y, spikes, outerRadius, innerRadius) {
+                let rot = Math.PI / 2 * 3;
+                let step = Math.PI / spikes;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y - outerRadius);
+                
+                for (let i = 0; i < spikes; i++) {
+                    ctx.lineTo(x + Math.cos(rot) * outerRadius, y + Math.sin(rot) * outerRadius);
+                    rot += step;
+                    ctx.lineTo(x + Math.cos(rot) * innerRadius, y + Math.sin(rot) * innerRadius);
+                    rot += step;
+                }
+                
+                ctx.lineTo(x, y - outerRadius);
+                ctx.closePath();
+            }
+            
+            // ==================== 浜嬩欢鍔ㄧ敾鏇存柊绯荤粺 ====================
+            
+            drawStageDecorations(ctx, stage, size, accentColor, outlineColor, animation) {
+                ctx.strokeStyle = outlineColor;
+                ctx.lineWidth = 2;
+                
+                switch (stage) {
+                    case 0: // 濠村効鏈?
+                        if (animation === 'smile') {
+                            // 濂剁摱 + 闂厜鏁堟灉
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(size/3, -size/8, 12, 20);
+                            ctx.strokeRect(size/3, -size/8, 12, 20);
+                            ctx.fillStyle = accentColor;
+                            ctx.beginPath();
+                            ctx.arc(size/3 + 6, -size/8 - 4, 5, 0, Math.PI * 2);
+                            ctx.fill();
+                            
+                            // 闂厜鏁堟灉
+                            const sparkle = Math.sin(Date.now() / 200) * 0.5 + 0.5;
+                            ctx.fillStyle = `rgba(255, 255, 0, ${sparkle})`;
+                            ctx.fillText('鉁?, size/2, -size/2);
+                        } else {
+                            // 鏅€氬ザ鐡?
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(size/3, -size/8, 10, 18);
+                            ctx.strokeRect(size/3, -size/8, 10, 18);
+                        }
+                        break;
+                        
+                    case 1: // 鍎跨鏈?
+                        ctx.fillStyle = accentColor;
+                        ctx.fillRect(-size/2 - 8, -size/4, 12, 18);
+                        ctx.strokeRect(-size/2 - 8, -size/4, 12, 18);
+                        
+                        if (animation === 'bicycle') {
+                            // 鑷杞﹁疆瀛愭晥鏋?
+                            ctx.strokeStyle = '#333333';
+                            ctx.lineWidth = 3;
+                            ctx.beginPath();
+                            ctx.arc(-size/3, size/2, 8, 0, Math.PI * 2);
+                            ctx.stroke();
+                            ctx.beginPath();
+                            ctx.arc(size/3, size/2, 8, 0, Math.PI * 2);
+                            ctx.stroke();
+                        }
+                        break;
+                        
+                    case 2: // 闈掑皯骞存湡
+                        // 鑰虫満
+                        ctx.strokeStyle = '#333333';
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.arc(0, -size/2, size/2.2, -Math.PI/3, -2*Math.PI/3, true);
+                        ctx.stroke();
+                        
+                        if (animation === 'love') {
+                            // 鐖卞績鏁堟灉
+                            ctx.fillStyle = '#ff69b4';
+                            ctx.font = '20px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('馃挄', size/2, -size/2);
+                        }
+                        break;
+                        
+                    case 3: // 鎴愬勾鏈?
+                        ctx.fillStyle = accentColor;
+                        ctx.fillRect(-4, -size/4, 8, size/2);
+                        ctx.strokeRect(-4, -size/4, 8, size/2);
+                        
+                        if (animation === 'wedding') {
+                            // 濠氱ぜ瑁呴グ
+                            ctx.fillStyle = '#ffffff';
+                            ctx.font = '16px Arial';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('馃憫', 0, -size/2 - 15);
+                        }
+                        break;
+                        
+                    case 4: // 鑰佸勾鏈?
+                        // 鎷愭潠
+                        ctx.strokeStyle = '#8B4513';
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.moveTo(size/2, size/4);
+                        ctx.lineTo(size/2, size);
+                        ctx.stroke();
+                        
+                        // 鐪奸暅
+                        ctx.strokeStyle = '#333333';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(-8, -size/2 - 2, 6, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.beginPath();
+                        ctx.arc(8, -size/2 - 2, 6, 0, Math.PI * 2);
+                        ctx.stroke();
+                        break;
+                }
+            }
+            
+            drawScene(stage) {
+                const ctx = this.ctx;
+                const color = this.stageColors[stage];
+                
+                try {
+                    // 鑳屾櫙
+                    ctx.fillStyle = color;
+                    ctx.fillRect(0, 0, 900, 700);
+                    
+                    // 缁樺埗鍦烘櫙鍏冪礌
+                    this.sceneElements.forEach(element => {
+                        this.drawSceneElement(element);
+                    });
+                    
+                    // 缁樺埗涓存椂鍏冪礌
+                    this.temporaryElements.forEach(element => {
+                        this.drawSceneElement(element);
+                    });
+                    
+                } catch (error) {
+                    console.error('Error drawing scene:', error);
+                    ctx.fillStyle = '#87ceeb';
+                    ctx.fillRect(0, 0, 900, 700);
+                }
+            }
+            
+            drawSceneElement(element) {
+                const ctx = this.ctx;
+                ctx.save();
+                ctx.translate(element.x, element.y);
+                ctx.globalAlpha = element.alpha || 1;
+                
+                switch (element.type) {
+                    case 'mother':
+                        // 濡堝
+                        ctx.fillStyle = '#ffb3ba';
+                        ctx.beginPath();
+                        ctx.arc(0, -30, 20, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillRect(-15, -10, 30, 40);
+                        ctx.fillStyle = '#8B4513';
+                        ctx.fillRect(-20, -35, 40, 10); // 澶村彂
+                        break;
+                        
+                    case 'friend':
+                        // 鏈嬪弸
+                        ctx.fillStyle = '#87ceeb';
+                        ctx.beginPath();
+                        ctx.arc(0, -25, 15, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillRect(-12, -10, 24, 30);
+                        break;
+                        
+                    case 'kindergarten':
+                        // 骞煎効鍥缓绛?
+                        ctx.fillStyle = '#ff9999';
+                        ctx.fillRect(-60, -40, 120, 60);
+                        ctx.fillStyle = '#8B0000';
+                        ctx.beginPath();
+                        ctx.moveTo(-60, -40);
+                        ctx.lineTo(0, -70);
+                        ctx.lineTo(60, -40);
+                        ctx.fill();
+                        break;
+                        
+                    case 'office':
+                        // 鍔炲叕瀹?
+                        ctx.fillStyle = '#708090';
+                        ctx.fillRect(-80, -50, 160, 80);
+                        ctx.fillStyle = '#000000';
+                        for (let i = 0; i < 6; i++) {
+                            ctx.fillRect(-70 + i * 25, -40, 15, 20);
+                        }
+                        break;
+                        
+                    case 'heart':
+                        // 鐖卞績
+                        ctx.fillStyle = '#ff69b4';
+                        ctx.font = '30px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('馃挅', 0, 0);
+                        break;
+                        
+                    case 'baby':
+                        // 濠村効
+                        ctx.fillStyle = '#ffb3ba';
+                        ctx.beginPath();
+                        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                        ctx.fill();
+                        break;
+                        
+                    case 'grandchild':
+                        // 瀛欏瓙/瀛欏コ
+                        ctx.fillStyle = '#90ee90';
+                        ctx.beginPath();
+                        ctx.arc(0, -15, 12, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillRect(-10, -5, 20, 25);
+                        break;
+                }
+                
+                ctx.restore();
+            }
+            
+            handleClick(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                console.log('Click at:', x, y);
+                
+                if (!this.isRunning) {
+                    // 妫€鏌ユ槸鍚︽槸娓告垙缁撴潫鐘舵€?
+                    if (this.gameEnded) {
+                        // 娓告垙缁撴潫鍚庯紝鍙湁鐐瑰嚮閲嶆柊寮€濮嬫寜閽墠鑳介噸鏂板紑濮?
+                        if (x >= 350 && x <= 550 && y >= 550 && y <= 600) {
+                            console.log('Restart button clicked');
+                            this.restartGame();
+                        }
+                    } else {
+                        // 娓告垙寮€濮嬬晫闈?
+                        if (x >= 350 && x <= 550 && y >= 300 && y <= 380) {
+                            console.log('Start button clicked');
+                            this.startGame();
+                        } else {
+                            console.log('Click outside start button, starting anyway');
+                            this.startGame();
+                        }
+                    }
+                } else if (this.currentEvent) {
+                    const dx = x - this.currentEvent.x;
+                    const dy = y - this.currentEvent.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance <= this.currentEvent.radius) {
+                        console.log('Event clicked!');
+                        this.completeEvent();
+                    }
+                }
+            }
+            
+            startGame() {
+                console.log('Starting enhanced game...');
+                this.isRunning = true;
+                this.gameEnded = false;
+                
+                this.status.textContent = '浜虹敓鍗冲皢寮€濮?..';
+                
+                // 閲嶇疆娓告垙鐘舵€?
+                this.gameTime = 0;
+                this.score = 0;
+                this.stage = 0;
+                this.lastEventTime = 0;
+                
+                // 閲嶇疆浜嬩欢杩涘害
+                this.stageEventIndex = [0, 0, 0, 0, 0];
+                this.completedEvents.clear();
+                
+                // 寮€濮嬪嚭鐢熷姩鐢?
+                this.startBirthAnimation();
+                
+                console.log('Enhanced game started with birth animation');
+                this.render();
+                this.gameLoop();
+            }
+            
+            startBirthAnimation() {
+                this.birthAnimation.active = true;
+                this.birthAnimation.babyY = -100;
+                this.birthAnimation.speed = 2;
+                this.birthAnimation.bounces = 0;
+                this.birthAnimation.phase = 'falling';
+                this.birthAnimation.sparkles = [];
+                this.birthAnimation.time = 0;
+                
+                // 鏄剧ず鍑虹敓鏂囧瓧
+                this.showGameText('鏂扮敓鍛界殑璇炵敓锛佲湪', 4000);
+                
+                // 鍒涘缓鏇村闂厜鏁堟灉
+                for (let i = 0; i < 15; i++) {
+                    this.birthAnimation.sparkles.push({
+                        x: 450 + (Math.random() - 0.5) * 300,
+                        y: 200 + (Math.random() - 0.5) * 200,
+                        size: Math.random() * 4 + 2,
+                        alpha: Math.random() * 0.8 + 0.2,
+                        speed: Math.random() * 3 + 1,
+                        twinkle: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+            
+            gameLoop() {
+                if (!this.isRunning) {
+                    console.log('Game loop stopped');
+                    return;
+                }
+                
+                // 鍙湁鍦ㄥ嚭鐢熷姩鐢诲畬鎴愬悗鎵嶅紑濮嬭鏃?
+                if (!this.birthAnimation.active) {
+                    this.gameTime += 100;
+                }
+                
+                // 鏇存柊闃舵
+                const stageIndex = Math.floor(this.gameTime / 20000);
+                if (stageIndex !== this.stage && stageIndex < 5) {
+                    this.stage = stageIndex;
+                    this.character.animation = 'dancing';
+                    this.character.emotion = 'excited';
+                    
+                    // 鏍规嵁闃舵璋冩暣瑙掕壊濮垮娍
+                    if (this.stage >= 1) {
+                        this.character.posture = 'standing';
+                    }
+                    
+                    this.showGameText(`杩涘叆${this.stageNames[this.stage]}`, 2000);
+                    console.log(`Entering stage: ${this.stageNames[this.stage]} - Events completed in previous stage: ${this.completedEvents.size}`);
+                }
+                
+                // 鏇存柊瑙掕壊
+                this.updateCharacter();
+                
+                // 鏇存柊娓告垙鏂囧瓧
+                this.updateGameText();
+                
+                // 鏇存柊鍑虹敓鍔ㄧ敾
+                this.updateBirthAnimation();
+                
+                // 鏇存柊浜嬩欢鍔ㄧ敾
+                this.updateEventAnimation();
+                
+                // 鏇存柊涓存椂鍏冪礌
+                this.updateTemporaryElements();
+                
+                // 鐢熸垚浜嬩欢 - 璋冩暣闂撮殧纭繚姣忎釜闃舵閮借兘浣撻獙鎵€鏈変簨浠?
+                // 姣忎釜闃舵20绉掞紝4涓簨浠讹紝鎵€浠ュぇ绾︽瘡5绉掍竴涓簨浠?
+                // 浣嗗湪鍑虹敓鍔ㄧ敾鏈熼棿涓嶇敓鎴愪簨浠?
+                const adjustedInterval = 5000;
+                if (this.gameTime - this.lastEventTime >= adjustedInterval && !this.currentEvent && !this.birthAnimation.active) {
+                    console.log('Creating new sequential event');
+                    this.createEvent();
+                }
+                
+                // 娓叉煋
+                try {
+                    this.render();
+                } catch (error) {
+                    console.error('Render error:', error);
+                }
+                
+                // 妫€鏌ユ父鎴忕粨鏉?
+                if (this.gameTime >= 100000) {
+                    console.log('Game ending');
+                    this.endGame();
+                    return;
+                }
+                
+                setTimeout(() => this.gameLoop(), 100);
+            }
+            
+            updateCharacter() {
+                // 瑙掕壊绉诲姩
+                if (this.character.isMoving) {
+                    const dx = this.character.targetX - this.character.x;
+                    const dy = this.character.targetY - this.character.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance > 5) {
+                        this.character.x += dx * 0.05;
+                        this.character.y += dy * 0.05;
+                        this.character.animation = 'walking';
+                    } else {
+                        this.character.isMoving = false;
+                        this.character.animation = 'idle';
+                    }
+                }
+                
+                // 鐗规畩鍔ㄧ敾璁℃椂
+                if (this.character.specialAnimation) {
+                    this.character.specialAnimationTime += 100;
+                    if (this.character.specialAnimationTime >= 3000) {
+                        this.character.specialAnimation = null;
+                        this.character.specialAnimationTime = 0;
+                        this.character.animation = 'idle';
+                        this.character.emotion = 'neutral';
+                    }
+                }
+                
+                this.character.animationFrame = (this.character.animationFrame + 1) % 60;
+            }
+            
+            updateGameText() {
+                if (this.gameText.fadeTime > 0) {
+                    this.gameText.fadeTime -= 100;
+                    this.gameText.alpha = Math.max(0, this.gameText.fadeTime / 2000);
+                }
+            }
+            
+            updateBirthAnimation() {
+                if (!this.birthAnimation.active) return;
+                
+                this.birthAnimation.time += 100;
+                
+                switch (this.birthAnimation.phase) {
+                    case 'falling':
+                        // 濠村効涓嬮檷
+                        this.birthAnimation.speed += 0.3; // 閲嶅姏鍔犻€?
+                        this.birthAnimation.babyY += this.birthAnimation.speed;
+                        
+                        // 妫€鏌ユ槸鍚﹀埌杈惧湴闈?
+                        if (this.birthAnimation.babyY >= this.birthAnimation.targetY) {
+                            this.birthAnimation.babyY = this.birthAnimation.targetY;
+                            this.birthAnimation.phase = 'bouncing';
+                            this.birthAnimation.speed = -8; // 鍙嶅脊閫熷害
+                            this.birthAnimation.bounces++;
+                            
+                            // 鐫€闄嗘椂鏄剧ず鐗规晥鏂囧瓧
+                            if (this.birthAnimation.bounces === 1) {
+                                this.showGameText('鍝囷紒馃懚', 1000);
+                            }
+                        }
+                        break;
+                        
+                    case 'bouncing':
+                        // 寮硅烦鏁堟灉
+                        this.birthAnimation.speed += 0.5; // 閲嶅姏
+                        this.birthAnimation.babyY += this.birthAnimation.speed;
+                        
+                        // 妫€鏌ュ脊璺?
+                        if (this.birthAnimation.babyY >= this.birthAnimation.targetY) {
+                            this.birthAnimation.babyY = this.birthAnimation.targetY;
+                            this.birthAnimation.bounces++;
+                            
+                            if (this.birthAnimation.bounces >= this.birthAnimation.maxBounces) {
+                                this.birthAnimation.phase = 'complete';
+                                // 璁剧疆瑙掕壊鍒濆鐘舵€?
+                                this.character.x = 450;
+                                this.character.y = this.birthAnimation.targetY;
+                                this.character.animation = 'idle';
+                                this.character.emotion = 'happy';
+                                this.character.posture = 'crawling';
+                                
+                                // 鏄剧ず娆㈣繋鏂囧瓧
+                                this.showGameText('娆㈣繋鏉ュ埌杩欎釜涓栫晫锛侌煂?, 2000);
+                                
+                                // 绔嬪嵆寮€濮嬫甯告父鎴忥紝涓嶅啀绛夊緟
+                                this.birthAnimation.active = false;
+                                this.showGameText('浜虹敓鏃呯▼寮€濮嬩簡锛?, 2000);
+                                this.status.textContent = '浜虹敓鏃呯▼杩涜涓?..';
+                                // 閲嶇疆浜嬩欢璁℃椂鍣紝纭繚鍑虹敓鍔ㄧ敾缁撴潫鍚庣珛鍗冲紑濮嬬涓€涓簨浠?
+                                this.lastEventTime = this.gameTime - 4000; // 1绉掑悗寮€濮嬬涓€涓簨浠?
+                            } else {
+                                // 缁х画寮硅烦锛屼絾鍔涘害鍑忓皬
+                                this.birthAnimation.speed = -4 / this.birthAnimation.bounces;
+                            }
+                        }
+                        break;
+                }
+                
+                // 鏇存柊闂厜鏁堟灉
+                this.birthAnimation.sparkles.forEach(sparkle => {
+                    sparkle.y += sparkle.speed;
+                    sparkle.alpha -= 0.015;
+                    sparkle.x += Math.sin(sparkle.y / 20) * 0.5;
+                    sparkle.twinkle += 0.2; // 闂儊鏁堟灉
+                });
+                
+                // 绉婚櫎娑堝け鐨勯棯鍏?
+                this.birthAnimation.sparkles = this.birthAnimation.sparkles.filter(s => s.alpha > 0);
+                
+                // 娣诲姞鏂扮殑闂厜
+                if (Math.random() < 0.4 && this.birthAnimation.sparkles.length < 20) {
+                    this.birthAnimation.sparkles.push({
+                        x: 450 + (Math.random() - 0.5) * 400,
+                        y: 150 + Math.random() * 150,
+                        size: Math.random() * 5 + 2,
+                        alpha: 1,
+                        speed: Math.random() * 4 + 1,
+                        twinkle: Math.random() * Math.PI * 2
+                    });
+                }
+            }
+            
+            updateTemporaryElements() {
+                this.temporaryElements = this.temporaryElements.filter(element => {
+                    if (element.fadeTime > 0) {
+                        element.fadeTime -= 100;
+                        element.alpha = element.fadeTime / element.maxFadeTime;
+                        return true;
+                    }
+                    return false;
+                });
+            }
+            
+            createEvent() {
+                const stageEvents = this.lifeEvents[this.stage] || this.lifeEvents[0];
+                
+                // 鑾峰彇褰撳墠闃舵鐨勪笅涓€涓簨浠讹紙椤哄簭鎾斁锛?
+                const currentIndex = this.stageEventIndex[this.stage];
+                
+                // 濡傛灉褰撳墠闃舵鐨勪簨浠堕兘瀹屾垚浜嗭紝灏遍噸鏂板紑濮嬶紙浣嗚繖绉嶆儏鍐靛簲璇ュ緢灏戝彂鐢燂級
+                const eventIndex = currentIndex % stageEvents.length;
+                const eventData = stageEvents[eventIndex];
+                
+                // 鍒涘缓鍞竴鐨勪簨浠禝D
+                const eventId = `${this.stage}-${eventIndex}`;
+                
+                // 濡傛灉杩欎釜浜嬩欢宸茬粡瀹屾垚杩囷紝璺冲埌涓嬩竴涓?
+                if (this.completedEvents.has(eventId)) {
+                    this.stageEventIndex[this.stage] = (currentIndex + 1) % stageEvents.length;
+                    // 濡傛灉鎵€鏈変簨浠堕兘瀹屾垚浜嗭紝灏遍殢鏈洪€夋嫨涓€涓?
+                    if (this.stageEventIndex[this.stage] === 0 && this.completedEvents.size >= stageEvents.length) {
+                        const randomIndex = Math.floor(Math.random() * stageEvents.length);
+                        const randomEventData = stageEvents[randomIndex];
+                        this.createEventWithData(randomEventData, `${this.stage}-random-${Date.now()}`);
+                        return;
+                    }
+                    // 閫掑綊璋冪敤锛岃幏鍙栦笅涓€涓湭瀹屾垚鐨勪簨浠?
+                    this.createEvent();
+                    return;
+                }
+                
+                // 鏇存柊浜嬩欢绱㈠紩
+                this.stageEventIndex[this.stage] = currentIndex + 1;
+                
+                this.createEventWithData(eventData, eventId);
+                
+                console.log(`Created sequential event: ${eventData.title} (${eventId})`);
+            }
+            
+            createEventWithData(eventData, eventId) {
+                // 鍑虹敓鍔ㄧ敾鏈熼棿涓嶅垱寤轰簨浠?
+                if (this.birthAnimation.active) {
+                    return;
+                }
+                
+                // 缂╃煭浜嬩欢鎸佺画鏃堕棿锛屽鍔犻毦搴?(0.8-2绉?
+                const randomDuration = 800 + Math.random() * 1200;
+                
+                this.currentEvent = {
+                    id: eventId,
+                    x: Math.random() * 600 + 150,
+                    y: Math.random() * 400 + 200,
+                    radius: 20 + Math.random() * 10, // 绋嶅井缂╁皬鍦嗗湀 20-30px
+                    color: ['#ff6b6b', '#4ecdc4', '#ffe66d', '#ff9ff3'][Math.floor(Math.random() * 4)],
+                    story: eventData,
+                    startTime: this.gameTime,
+                    duration: randomDuration,
+                    pulseTime: 0
+                };
+                
+                this.lastEventTime = this.gameTime;
+                
+                // 鏄剧ず浜嬩欢鏂囧瓧
+                this.showGameText(eventData.title, 1500);
+                
+                // 瑙掕壊绉诲姩鍒颁簨浠堕檮杩?
+                this.character.targetX = this.currentEvent.x + (Math.random() - 0.5) * 100;
+                this.character.targetY = this.currentEvent.y + 80;
+                this.character.isMoving = true;
+                this.character.emotion = 'excited';
+            }
+            
+            completeEvent() {
+                if (this.currentEvent) {
+                    const eventData = this.currentEvent.story;
+                    this.score += 15;
+                    
+                    // 鏍囪浜嬩欢涓哄凡瀹屾垚
+                    this.completedEvents.add(this.currentEvent.id);
+                    
+                    // 鍚姩璇︾粏浜嬩欢鍔ㄧ敾
+                    this.startEventAnimation(eventData, this.currentEvent.id);
+                    
+                    // 鏄剧ず浜嬩欢鎻忚堪
+                    this.showGameText(eventData.description, 2500);
+                    
+                    // 鎵ц瑙掕壊鍔ㄧ敾
+                    this.character.animation = eventData.characterChange;
+                    this.character.emotion = eventData.characterChange;
+                    this.character.specialAnimation = eventData.animation;
+                    this.character.specialAnimationTime = 0;
+                    
+                    // 鎵ц鍦烘櫙鍙樺寲
+                    this.executeSceneChange(eventData.sceneChange);
+                    
+                    // 鐗规畩浜嬩欢澶勭悊
+                    this.handleSpecialEvent(eventData);
+                    
+                    console.log(`Event completed: ${eventData.title} (${this.currentEvent.id}) - Score: ${this.score}`);
+                    console.log(`Completed events: ${this.completedEvents.size}`);
+                    
+                    this.currentEvent = null;
+                }
+            }
+            
+            executeSceneChange(sceneChange) {
+                if (!sceneChange) return;
+                
+                switch (sceneChange) {
+                    case 'addMother':
+                        this.temporaryElements.push({
+                            type: 'mother',
+                            x: 300,
+                            y: 400,
+                            alpha: 1,
+                            fadeTime: 3000,
+                            maxFadeTime: 3000
+                        });
+                        break;
+                        
+                    case 'addFriend':
+                        this.temporaryElements.push({
+                            type: 'friend',
+                            x: 600,
+                            y: 450,
+                            alpha: 1,
+                            fadeTime: 4000,
+                            maxFadeTime: 4000
+                        });
+                        break;
+                        
+                    case 'kindergarten':
+                        this.sceneElements.push({
+                            type: 'kindergarten',
+                            x: 450,
+                            y: 300,
+                            alpha: 1
+                        });
+                        // 3绉掑悗绉婚櫎
+                        setTimeout(() => {
+                            this.sceneElements = this.sceneElements.filter(e => e.type !== 'kindergarten');
+                        }, 3000);
+                        break;
+                        
+                    case 'addHeart':
+                        this.temporaryElements.push({
+                            type: 'heart',
+                            x: this.character.x + 50,
+                            y: this.character.y - 50,
+                            alpha: 1,
+                            fadeTime: 2500,
+                            maxFadeTime: 2500
+                        });
+                        break;
+                        
+                    case 'office':
+                        this.sceneElements.push({
+                            type: 'office',
+                            x: 450,
+                            y: 350,
+                            alpha: 1
+                        });
+                        setTimeout(() => {
+                            this.sceneElements = this.sceneElements.filter(e => e.type !== 'office');
+                        }, 4000);
+                        break;
+                        
+                    case 'addBaby':
+                        this.temporaryElements.push({
+                            type: 'baby',
+                            x: this.character.x - 30,
+                            y: this.character.y + 20,
+                            alpha: 1,
+                            fadeTime: 5000,
+                            maxFadeTime: 5000
+                        });
+                        break;
+                        
+                    case 'addGrandchild':
+                        this.temporaryElements.push({
+                            type: 'grandchild',
+                            x: this.character.x + 40,
+                            y: this.character.y,
+                            alpha: 1,
+                            fadeTime: 4000,
+                            maxFadeTime: 4000
+                        });
+                        break;
+                }
+            }
+            
+            handleSpecialEvent(eventData) {
+                switch (eventData.animation) {
+                    case 'standup':
+                        // 绗竴娆＄珯绔?- 鏀瑰彉濮垮娍
+                        setTimeout(() => {
+                            this.character.posture = 'standing';
+                        }, 1000);
+                        break;
+                        
+                    case 'firstwalk':
+                        // 绗竴娆¤蛋璺?
+                        setTimeout(() => {
+                            this.character.targetX = this.character.x + 100;
+                            this.character.isMoving = true;
+                        }, 500);
+                        break;
+                }
+            }
+            
+            // ==================== 璇︾粏浜嬩欢鍔ㄧ敾绯荤粺 ====================
+            // 姣忎釜浜嬩欢鐨勫姩鐢荤郴缁燂紝鍖呭惈涓板瘜鐨勪汉鐗╁姩浣溿€佺涓夋柟浜虹墿銆佸満鏅€佸缓绛戙€佹晥鏋滅瓑
+            
+            startEventAnimation(animationType, eventData) {
+                console.log(`Starting detailed animation for: ${animationType}`);
+                
+                // 閲嶇疆鍔ㄧ敾鐘舵€?
+                this.eventAnimations.currentAnimation = animationType;
+                this.eventAnimations.animationTime = 0;
+                this.eventAnimations.animationPhase = 'intro';
+                this.eventAnimations.animationElements = [];
+                
+                // 鏍规嵁鍔ㄧ敾绫诲瀷鍒濆鍖栫壒瀹氬厓绱?
+                this.initializeEventAnimation(animationType, eventData);
+            }
+            
+            updateEventAnimation() {
+                if (!this.eventAnimations.currentAnimation) return;
+                
+                this.eventAnimations.animationTime += 100;
+                
+                // 鏇存柊褰撳墠鍔ㄧ敾
+                switch (this.eventAnimations.currentAnimation) {
+                    case 'smile':
+                        this.updateSmileAnimation();
+                        break;
+                    case 'rollover':
+                        this.updateRolloverAnimation();
+                        break;
+                    case 'standup':
+                        this.updateStandupAnimation();
+                        break;
+                    case 'firstwalk':
+                        this.updateFirstWalkAnimation();
+                        break;
+                }
+                
+                // 妫€鏌ュ姩鐢绘槸鍚︾粨鏉?- 浣跨敤鍥哄畾鐨勬寔缁椂闂?
+                let animationDuration = 4000; // 榛樿4绉?
+                switch (this.eventAnimations.currentAnimation) {
+                    case 'smile':
+                        animationDuration = 4000;
+                        break;
+                    case 'rollover':
+                        animationDuration = 3500;
+                        break;
+                    case 'standup':
+                        animationDuration = 5000;
+                        break;
+                    case 'firstwalk':
+                        animationDuration = 6000;
+                        break;
+                }
+                
+                if (this.eventAnimations.animationTime >= animationDuration) {
+                    this.endEventAnimation();
+                }
+            }
+            
+            renderEventAnimation() {
+                if (!this.eventAnimations.currentAnimation) return;
+                
+                // 简化的动画渲染 - 原复杂动画已被移除
+                console.log(`Rendering simplified animation: ${this.eventAnimations.currentAnimation}`);
+                
+                // 可以在这里添加简单的视觉反馈
+                const ctx = this.ctx;
+                ctx.save();
+                ctx.globalAlpha = 0.3;
+                ctx.fillStyle = '#FFD700';
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                ctx.restore();
+            }
+            
+            endEventAnimation() {
+                console.log(`Ending animation: ${this.eventAnimations.currentAnimation}`);
+                this.eventAnimations.currentAnimation = null;
+                this.eventAnimations.animationElements = [];
+            }
+            
+            // ==================== 濠村効鏈熷姩鐢诲疄鐜?====================
+            
+            // 绗竴娆″井绗戝姩鐢?(400+ 琛?
+            initSmileAnimation(eventData) {
+                this.eventAnimations.animationElements = [
+                    // 濡堝瑙掕壊
+                    {
+                        type: 'mother',
+                        x: 200,
+                        y: 300,
+                        targetX: 300,
+                        targetY: 350,
+                        alpha: 0,
+                        targetAlpha: 1,
+                        scale: 0.8,
+                        targetScale: 1,
+                        emotion: 'loving',
+                        animation: 'approaching',
+                        animationFrame: 0,
+                        voice: '',
+                        voiceTime: 0,
+                        handPosition: { x: 0, y: 0 },
+                        eyeDirection: 'baby',
+                        blinkTimer: 0,
+                        breathingOffset: 0,
+                        heartbeat: 0
+                    },
+                    // 濠村効搴婄幆澧?
+                    {
+                        type: 'nursery',
+                        crib: {
+                            x: 450,
+                            y: 420,
+                            width: 120,
+                            height: 80,
+                            color: '#8B4513',
+                            blanket: {
+                                color: '#FFB6C1',
+                                pattern: 'dots',
+                                wrinkles: [],
+                                softness: 0
+                            },
+                            pillow: {
+                                x: 430,
+                                y: 400,
+                                fluffiness: 0
+                            }
+                        },
+                        mobile: {
+                            x: 450,
+                            y: 340,
+                            rotation: 0,
+                            isPlaying: false,
+                            toys: [
+                                { type: 'star', color: '#FFD700', angle: 0, height: 0 },
+                                { type: 'moon', color: '#C0C0C0', angle: 120, height: 0 },
+                                { type: 'cloud', color: '#87CEEB', angle: 240, height: 0 }
+                            ],
+                            musicNotes: []
+                        },
+                        room: {
+                            walls: '#F5F5DC',
+                            floor: '#DEB887',
+                            lighting: 'warm',
+                            temperature: 'cozy'
+                        }
+                    },
+                    // 鎴块棿瑁呴グ
+                    {
+                        type: 'roomDecor',
+                        window: {
+                            x: 100,
+                            y: 150,
+                            width: 80,
+                            height: 100,
+                            light: 0.7,
+                            curtains: '#FFE4E1',
+                            sunbeams: [
+                                { x: 120, y: 200, width: 20, intensity: 0.3, angle: 45 },
+                                { x: 140, y: 180, width: 15, intensity: 0.2, angle: 50 },
+                                { x: 160, y: 220, width: 25, intensity: 0.4, angle: 40 }
+                            ]
+                        },
+                        furniture: [
+                            {
+                                type: 'rockingChair',
+                                x: 150,
+                                y: 400,
+                                color: '#8B4513',
+                                cushion: '#FF69B4',
+                                rockingAngle: 0,
+                                isRocking: false
+                            },
+                            {
+                                type: 'dresser',
+                                x: 600,
+                                y: 380,
+                                items: [
+                                    { type: 'bottle', x: 10, y: -10, temperature: 'warm' },
+                                    { type: 'diapers', x: 30, y: -5, stack: 5 },
+                                    { type: 'lotion', x: 50, y: -8, scent: 'lavender' },
+                                    { type: 'toys', x: 70, y: -12, count: 3 }
+                                ]
+                            }
+                        ]
+                    },
+                    // 鐜╁叿鍜岄亾鍏?
+                    {
+                        type: 'toys',
+                        items: [
+                            {
+                                type: 'teddyBear',
+                                x: 380,
+                                y: 450,
+                                color: '#8B4513',
+                                size: 'small',
+                                expression: 'happy',
+                                bowtie: '#FF0000',
+                                isWatching: true,
+                                eyeMovement: 0
+                            },
+                            {
+                                type: 'musicBox',
+                                x: 550,
+                                y: 300,
+                                isPlaying: false,
+                                melody: 'lullaby',
+                                ballerina: {
+                                    rotation: 0,
+                                    height: 0,
+                                    dress: '#FF69B4'
+                                },
+                                notes: []
+                            },
+                            {
+                                type: 'rattle',
+                                x: 520,
+                                y: 440,
+                                color: '#FFD700',
+                                isShaking: false,
+                                soundWaves: [],
+                                beads: ['red', 'blue', 'green', 'yellow']
+                            }
+                        ]
+                    },
+                    // 鐗规晥鍜屾皼鍥?
+                    {
+                        type: 'atmosphere',
+                        lighting: {
+                            ambientLight: 0.8,
+                            warmth: 0.9,
+                            softness: 0.7,
+                            goldHour: false
+                        },
+                        particles: {
+                            dustMotes: [],
+                            sparkles: [],
+                            hearts: [],
+                            bubbles: []
+                        },
+                        sounds: {
+                            heartbeat: { active: false, rhythm: 0 },
+                            breathing: { active: true, rhythm: 0 },
+                            lullaby: { active: false, volume: 0 }
+                        }
+                    },
+                    // 鎯呮劅绯荤粺
+                    {
+                        type: 'emotions',
+                        babyMood: 'content',
+                        motherMood: 'loving',
+                        bonding: 0,
+                        joy: 0,
+                        love: 0,
+                        connection: 0,
+                        magicalMoment: false,
+                        emotionalPeaks: [],
+                        aura: {
+                            baby: { color: '#FFB6C1', intensity: 0.3, radius: 30 },
+                            mother: { color: '#FF69B4', intensity: 0.4, radius: 40 }
+                        }
+                    }
+                ];
+            }
+            
+            updateSmileAnimation() {
+                const time = this.eventAnimations.animationTime;
+                const elements = this.eventAnimations.animationElements;
+                
+                // 闃舵绠＄悊 - 5涓缁嗛樁娈?
+                if (time < 800) {
+                    this.eventAnimations.animationPhase = 'setup';
+                } else if (time < 1600) {
+                    this.eventAnimations.animationPhase = 'motherAppears';
+                } else if (time < 2400) {
+                    this.eventAnimations.animationPhase = 'interaction';
+                } else if (time < 3200) {
+                    this.eventAnimations.animationPhase = 'smile';
+                } else {
+                    this.eventAnimations.animationPhase = 'celebration';
+                }
+                
+                // 鏇存柊濡堝瑙掕壊
+                const mother = elements.find(e => e.type === 'mother');
+                if (mother) {
+                    switch (this.eventAnimations.animationPhase) {
+                        case 'setup':
+                            // 濡堝缂撴參鍑虹幇
+                            mother.alpha = Math.min(1, mother.alpha + 0.015);
+                            mother.breathingOffset = Math.sin(time / 300) * 1;
+                            mother.heartbeat = Math.sin(time / 150) * 0.5;
+                            break;
+                            
+                        case 'motherAppears':
+                            // 濡堝璧板悜濠村効
+                            mother.x += (mother.targetX - mother.x) * 0.03;
+                            mother.y += (mother.targetY - mother.y) * 0.03;
+                            mother.scale += (mother.targetScale - mother.scale) * 0.02;
+                            mother.breathingOffset = Math.sin(time / 200) * 2;
+                            mother.blinkTimer++;
+                            if (mother.blinkTimer > 80) mother.blinkTimer = 0;
+                            
+                            // 鐪肩璺熼殢濠村効
+                            mother.eyeDirection = 'baby';
+                            break;
+                            
+                        case 'interaction':
+                            // 濡堝寮€濮嬩簰鍔?
+                            mother.animation = 'talking';
+                            mother.voice = '瀹濊礉锛岀湅濡堝~';
+                            mother.voiceTime = time;
+                            mother.handPosition.x = Math.sin(time / 300) * 8;
+                            mother.handPosition.y = Math.cos(time / 400) * 4;
+                            mother.emotion = 'encouraging';
+                            
+                            // 鏇存俯鏌旂殑鍔ㄤ綔
+                            mother.breathingOffset = Math.sin(time / 250) * 1.5;
+                            break;
+                            
+                        case 'smile':
+                            // 濠村効寰瑧鏃跺濡堢殑鍙嶅簲
+                            mother.emotion = 'overjoyed';
+                            mother.animation = 'excited';
+                            mother.voice = '鍝︼紒瀹濊礉绗戜簡锛?;
+                            mother.handPosition.x = Math.sin(time / 200) * 12;
+                            mother.handPosition.y = Math.cos(time / 300) * 8;
+                            break;
+                            
+                        case 'celebration':
+                            // 搴嗙闃舵
+                            mother.animation = 'celebrating';
+                            mother.emotion = 'ecstatic';
+                            mother.voice = '鎴戠殑灏忓ぉ浣匡紒';
+                            mother.handPosition.x = Math.sin(time / 150) * 15;
+                            mother.handPosition.y = Math.cos(time / 200) * 10;
+                            break;
+                    }
+                }
+                
+                // 鏇存柊濠村効搴婄幆澧?
+                const nursery = elements.find(e => e.type === 'nursery');
+                if (nursery) {
+                    // 鏃嬭浆闊充箰鐩?
+                    nursery.mobile.rotation += 1.5;
+                    nursery.mobile.toys.forEach((toy, index) => {
+                        toy.angle += 0.8 + index * 0.3;
+                        toy.height = Math.sin(time / 400 + index) * 3;
+                    });
+                    
+                    // 闊充箰鐩掑湪浜掑姩闃舵寮€濮嬫挱鏀?
+                    if (this.eventAnimations.animationPhase === 'interaction') {
+                        nursery.mobile.isPlaying = true;
+                        
+                        // 娣诲姞闊崇
+                        if (time % 300 === 0) {
+                            nursery.mobile.musicNotes.push({
+                                x: nursery.mobile.x + (Math.random() - 0.5) * 30,
+                                y: nursery.mobile.y - 10,
+                                life: 120,
+                                note: ['鈾?, '鈾?, '鈾?, '鈾?][Math.floor(Math.random() * 4)],
+                                color: ['#FFD700', '#FF69B4', '#87CEEB'][Math.floor(Math.random() * 3)],
+                                drift: (Math.random() - 0.5) * 2
+                            });
+                        }
+                    }
+                    
+                    // 鏇存柊闊崇
+                    nursery.mobile.musicNotes = nursery.mobile.musicNotes.filter(note => {
+                        note.y -= 0.8;
+                        note.x += note.drift;
+                        note.life--;
+                        return note.life > 0;
+                    });
+                    
+                    // 姣瓙鐨勬煍杞晥鏋?
+                    nursery.crib.blanket.softness = Math.sin(time / 500) * 2;
+                    nursery.crib.pillow.fluffiness = Math.sin(time / 600) * 1.5;
+                }
+                
+                // 鏇存柊鎴块棿瑁呴グ
+                const roomDecor = elements.find(e => e.type === 'roomDecor');
+                if (roomDecor) {
+                    // 闃冲厜鏁堟灉
+                    roomDecor.window.sunbeams.forEach(beam => {
+                        beam.intensity = 0.3 + Math.sin(time / 600 + beam.x / 100) * 0.15;
+                    });
+                    
+                    // 鎽囨鍦ㄥ濡堥潬杩戞椂寮€濮嬭交寰憞鎽?
+                    const chair = roomDecor.furniture.find(f => f.type === 'rockingChair');
+                    if (chair && this.eventAnimations.animationPhase !== 'setup') {
+                        chair.isRocking = true;
+                        chair.rockingAngle = Math.sin(time / 800) * 3;
+                    }
+                }
+                
+                // 鏇存柊鐜╁叿
+                const toys = elements.find(e => e.type === 'toys');
+                if (toys) {
+                    const teddyBear = toys.items.find(item => item.type === 'teddyBear');
+                    if (teddyBear) {
+                        // 娉拌开鐔?瑙傜湅"浜掑姩
+                        teddyBear.eyeMovement = Math.sin(time / 400) * 5;
+                        if (this.eventAnimations.animationPhase === 'smile') {
+                            teddyBear.expression = 'delighted';
+                        }
+                    }
+                    
+                    const musicBox = toys.items.find(item => item.type === 'musicBox');
+                    if (musicBox && this.eventAnimations.animationPhase === 'interaction') {
+                        musicBox.isPlaying = true;
+                        musicBox.ballerina.rotation += 4;
+                        musicBox.ballerina.height = Math.sin(time / 250) * 2;
+                        
+                        // 闊充箰鐩掗煶绗?
+                        if (time % 250 === 0) {
+                            musicBox.notes.push({
+                                x: musicBox.x,
+                                y: musicBox.y - 15,
+                                life: 100,
+                                note: '鈾?,
+                                alpha: 1
+                            });
+                        }
+                        
+                        musicBox.notes = musicBox.notes.filter(note => {
+                            note.y -= 1.2;
+                            note.alpha *= 0.98;
+                            note.life--;
+                            return note.life > 0;
+                        });
+                    }
+                    
+                    const rattle = toys.items.find(item => item.type === 'rattle');
+                    if (rattle && this.eventAnimations.animationPhase === 'celebration') {
+                        rattle.isShaking = true;
+                        rattle.x += Math.sin(time / 120) * 1.5;
+                        
+                        // 鎽囬搩澹版尝
+                        if (time % 180 === 0) {
+                            rattle.soundWaves.push({
+                                x: rattle.x,
+                                y: rattle.y,
+                                radius: 0,
+                                maxRadius: 25,
+                                alpha: 0.7
+                            });
+                        }
+                        
+                        rattle.soundWaves = rattle.soundWaves.filter(wave => {
+                            wave.radius = Math.min(wave.maxRadius, wave.radius + 1.5);
+                            wave.alpha *= 0.96;
+                            return wave.alpha > 0.1;
+                        });
+                    }
+                }
+                
+                // 鏇存柊姘涘洿鍜岀壒鏁?
+                const atmosphere = elements.find(e => e.type === 'atmosphere');
+                if (atmosphere) {
+                    // 寰瑧闃舵鐨勭壒娈婃晥鏋?
+                    if (this.eventAnimations.animationPhase === 'smile') {
+                        atmosphere.lighting.goldHour = true;
+                        atmosphere.lighting.warmth = Math.min(1, atmosphere.lighting.warmth + 0.01);
+                        
+                        // 娣诲姞蹇冨舰绮掑瓙
+                        if (Math.random() < 0.4) {
+                            atmosphere.particles.hearts.push({
+                                x: this.character.x + (Math.random() - 0.5) * 60,
+                                y: this.character.y - 10,
+                                size: Math.random() * 8 + 4,
+                                alpha: 1,
+                                speed: Math.random() * 1.5 + 0.5,
+                                life: 150,
+                                color: '#FF69B4',
+                                pulse: Math.random() * Math.PI * 2
+                            });
+                        }
+                        
+                        // 娣诲姞闂厜绮掑瓙
+                        if (Math.random() < 0.5) {
+                            atmosphere.particles.sparkles.push({
+                                x: this.character.x + (Math.random() - 0.5) * 80,
+                                y: this.character.y + (Math.random() - 0.5) * 60,
+                                size: Math.random() * 4 + 2,
+                                alpha: 1,
+                                color: ['#FFD700', '#FF69B4', '#87CEEB', '#98FB98'][Math.floor(Math.random() * 4)],
+                                life: 80,
+                                twinkle: Math.random() * Math.PI * 2,
+                                drift: (Math.random() - 0.5) * 2
+                            });
+                        }
+                    }
+                    
+                    // 搴嗙闃舵鐨勭垎鍙戞晥鏋?
+                    if (this.eventAnimations.animationPhase === 'celebration') {
+                        // 娣诲姞姘旀场鏁堟灉
+                        if (Math.random() < 0.3) {
+                            atmosphere.particles.bubbles.push({
+                                x: this.character.x + (Math.random() - 0.5) * 100,
+                                y: this.character.y + 50,
+                                size: Math.random() * 15 + 5,
+                                alpha: 0.6,
+                                speed: Math.random() * 2 + 1,
+                                life: 200,
+                                shimmer: Math.random() * Math.PI * 2
+                            });
+                        }
+                        
+                        // 灏樺焹绮掑瓙鍦ㄩ槼鍏変腑鑸炶箞
+                        if (Math.random() < 0.6) {
+                            atmosphere.particles.dustMotes.push({
+                                x: 100 + Math.random() * 100,
+                                y: 150 + Math.random() * 200,
+                                size: Math.random() * 2 + 1,
+                                alpha: 0.4,
+                                drift: (Math.random() - 0.5) * 1,
+                                fall: Math.random() * 0.5 + 0.2,
+                                life: 300
+                            });
+                        }
+                    }
+                    
+                    // 鏇存柊鎵€鏈夌矑瀛?
+                    ['hearts', 'sparkles', 'bubbles', 'dustMotes'].forEach(particleType => {
+                        atmosphere.particles[particleType] = atmosphere.particles[particleType].filter(particle => {
+                            switch (particleType) {
+                                case 'hearts':
+                                    particle.y -= particle.speed;
+                                    particle.alpha *= 0.995;
+                                    particle.pulse += 0.15;
+                                    break;
+                                case 'sparkles':
+                                    particle.alpha *= 0.97;
+                                    particle.twinkle += 0.2;
+                                    particle.x += particle.drift;
+                                    break;
+                                case 'bubbles':
+                                    particle.y -= particle.speed;
+                                    particle.alpha *= 0.998;
+                                    particle.shimmer += 0.1;
+                                    particle.x += Math.sin(particle.shimmer) * 0.5;
+                                    break;
+                                case 'dustMotes':
+                                    particle.x += particle.drift;
+                                    particle.y += particle.fall;
+                                    particle.alpha *= 0.999;
+                                    break;
+                            }
+                            particle.life--;
+                            return particle.life > 0 && particle.alpha > 0.05;
+                        });
+                    });
+                }
+                
+                // 鏇存柊鎯呮劅绯荤粺
+                const emotions = elements.find(e => e.type === 'emotions');
+                if (emotions) {
+                    switch (this.eventAnimations.animationPhase) {
+                        case 'setup':
+                            emotions.babyMood = 'peaceful';
+                            emotions.motherMood = 'anticipating';
+                            break;
+                        case 'motherAppears':
+                            emotions.babyMood = 'curious';
+                            emotions.motherMood = 'loving';
+                            emotions.bonding += 0.01;
+                            break;
+                        case 'interaction':
+                            emotions.babyMood = 'engaged';
+                            emotions.motherMood = 'encouraging';
+                            emotions.bonding += 0.02;
+                            emotions.connection += 0.015;
+                            break;
+                        case 'smile':
+                            emotions.babyMood = 'joyful';
+                            emotions.motherMood = 'ecstatic';
+                            emotions.joy += 0.03;
+                            emotions.love += 0.025;
+                            emotions.magicalMoment = true;
+                            
+                            // 鎯呮劅楂樺嘲
+                            if (!emotions.emotionalPeaks.find(p => p.type === 'firstSmile')) {
+                                emotions.emotionalPeaks.push({
+                                    type: 'firstSmile',
+                                    intensity: 1,
+                                    time: time,
+                                    duration: 800
+                                });
+                            }
+                            break;
+                        case 'celebration':
+                            emotions.babyMood = 'blissful';
+                            emotions.motherMood = 'overwhelmed_with_love';
+                            emotions.joy = Math.min(1, emotions.joy + 0.02);
+                            emotions.love = Math.min(1, emotions.love + 0.02);
+                            emotions.connection = Math.min(1, emotions.connection + 0.02);
+                            break;
+                    }
+                    
+                    // 鏇存柊鍏夌幆鏁堟灉
+                    emotions.aura.baby.intensity = 0.3 + emotions.joy * 0.4;
+                    emotions.aura.baby.radius = 30 + emotions.joy * 20;
+                    emotions.aura.mother.intensity = 0.4 + emotions.love * 0.3;
+                    emotions.aura.mother.radius = 40 + emotions.love * 25;
+                    
+                    // 鏇存柊鎯呮劅楂樺嘲
+                    emotions.emotionalPeaks = emotions.emotionalPeaks.filter(peak => {
+                        peak.duration--;
+                        return peak.duration > 0;
+                    });
+                }
+            }
+            
+            showGameText(text, duration) {
+                this.gameText.text = text;
+                this.gameText.alpha = 1;
+                this.gameText.fadeTime = duration;
+            }
+            
+            render() {
+                // 缁樺埗鍦烘櫙
+                this.drawScene(this.stage);
+                
+                // 濡傛灉鍑虹敓鍔ㄧ敾婵€娲伙紝缁樺埗鍑虹敓鍔ㄧ敾
+                if (this.birthAnimation.active) {
+                    this.drawBirthAnimation();
+                } else {
+                    // 姝ｅ父娓告垙娓叉煋
+                    // 缁樺埗瑙掕壊
+                    this.drawCharacter(
+                        this.character.x, 
+                        this.character.y, 
+                        this.stage, 
+                        this.character.animation, 
+                        this.character.emotion
+                    );
+                    
+                    // 缁樺埗浜嬩欢
+                    if (this.currentEvent) {
+                        this.drawEvent(this.currentEvent);
+                    }
+                }
+                
+                // 缁樺埗娓告垙鍐呮枃瀛?
+                this.drawGameText();
+                
+                // 缁樺埗浜嬩欢鍔ㄧ敾
+                this.renderEventAnimation();
+                
+                // 缁樺埗UI
+                this.drawUI();
+            }
+            
+            drawBirthAnimation() {
+                const ctx = this.ctx;
+                
+                // 缁樺埗闂厜鏁堟灉
+                this.birthAnimation.sparkles.forEach(sparkle => {
+                    ctx.save();
+                    ctx.globalAlpha = sparkle.alpha * (0.5 + 0.5 * Math.sin(sparkle.twinkle));
+                    
+                    // 褰╄壊闂厜
+                    const colors = ['#ffe66d', '#ff6b6b', '#4ecdc4', '#ff9ff3', '#ffffff'];
+                    ctx.fillStyle = colors[Math.floor(sparkle.twinkle) % colors.length];
+                    ctx.beginPath();
+                    ctx.arc(sparkle.x, sparkle.y, sparkle.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 闂厜鍗佸瓧
+                    ctx.strokeStyle = '#ffffff';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(sparkle.x - sparkle.size * 3, sparkle.y);
+                    ctx.lineTo(sparkle.x + sparkle.size * 3, sparkle.y);
+                    ctx.moveTo(sparkle.x, sparkle.y - sparkle.size * 3);
+                    ctx.lineTo(sparkle.x, sparkle.y + sparkle.size * 3);
+                    ctx.stroke();
+                    ctx.restore();
+                });
+                
+                // 缁樺埗涓嬮檷鐨勫┐鍎?
+                if (this.birthAnimation.phase === 'falling' || this.birthAnimation.phase === 'bouncing') {
+                    ctx.save();
+                    ctx.translate(450, this.birthAnimation.babyY);
+                    
+                    // 濠村効鍏夌幆
+                    const glowSize = 60 + Math.sin(this.birthAnimation.time / 200) * 10;
+                    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, glowSize);
+                    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+                    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, glowSize, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 缁樺埗濠村効锛堝皬鐗堟湰鐨勮鑹诧級
+                    const babySize = 30;
+                    const characterColor = '#ffb3ba'; // 绮夎壊濠村効
+                    const outlineColor = '#ffffff';
+                    
+                    // 澶撮儴
+                    ctx.fillStyle = characterColor;
+                    ctx.beginPath();
+                    ctx.arc(0, -babySize/2, babySize/3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = outlineColor;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                    
+                    // 韬綋
+                    ctx.fillStyle = characterColor;
+                    ctx.fillRect(-babySize/4, -babySize/4, babySize/2, babySize/2);
+                    ctx.strokeRect(-babySize/4, -babySize/4, babySize/2, babySize/2);
+                    
+                    // 鎵嬭噦
+                    ctx.fillRect(-babySize/3, -babySize/8, babySize/6, babySize/4);
+                    ctx.strokeRect(-babySize/3, -babySize/8, babySize/6, babySize/4);
+                    ctx.fillRect(babySize/6, -babySize/8, babySize/6, babySize/4);
+                    ctx.strokeRect(babySize/6, -babySize/8, babySize/6, babySize/4);
+                    
+                    // 鑵?
+                    ctx.fillRect(-babySize/8, babySize/4, babySize/12, babySize/4);
+                    ctx.strokeRect(-babySize/8, babySize/4, babySize/12, babySize/4);
+                    ctx.fillRect(babySize/24, babySize/4, babySize/12, babySize/4);
+                    ctx.strokeRect(babySize/24, babySize/4, babySize/12, babySize/4);
+                    
+                    // 琛ㄦ儏 - 澶х溂鐫?
+                    ctx.fillStyle = outlineColor;
+                    ctx.fillRect(-8, -babySize/2 - 2, 3, 3);
+                    ctx.fillRect(5, -babySize/2 - 2, 3, 3);
+                    
+                    // 寰瑧
+                    ctx.strokeStyle = outlineColor;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, -babySize/2 + 8, 6, 0, Math.PI);
+                    ctx.stroke();
+                    
+                    // 濂剁摱
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(babySize/4, -babySize/12, 6, 12);
+                    ctx.strokeRect(babySize/4, -babySize/12, 6, 12);
+                    
+                    ctx.restore();
+                }
+                
+                // 缁樺埗"鐫€闄?鏁堟灉
+                if (this.birthAnimation.phase === 'bouncing' && this.birthAnimation.babyY >= this.birthAnimation.targetY - 5) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.6;
+                    ctx.fillStyle = '#ffffff';
+                    for (let i = 0; i < 8; i++) {
+                        const angle = (i / 8) * Math.PI * 2;
+                        const x = 450 + Math.cos(angle) * 40;
+                        const y = this.birthAnimation.targetY + 20 + Math.sin(angle) * 10;
+                        ctx.beginPath();
+                        ctx.arc(x, y, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+                }
+            }
+            
+            drawEvent(event) {
+                const ctx = this.ctx;
+                event.pulseTime += 100;
+                
+                // 鑴夊啿鏁堟灉
+                const pulse = Math.sin(event.pulseTime / 200) * 8 + event.radius;
+                
+                // 浜嬩欢鍦嗗湀
+                ctx.fillStyle = event.color;
+                ctx.globalAlpha = 0.6;
+                ctx.beginPath();
+                ctx.arc(event.x, event.y, pulse, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.globalAlpha = 1;
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(event.x, event.y, event.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.strokeStyle = event.color;
+                ctx.lineWidth = 4;
+                ctx.stroke();
+                
+                // 鍊掕鏃跺渾鍦?
+                const timeLeft = event.duration - (this.gameTime - event.startTime);
+                const timeProgress = timeLeft / event.duration;
+                
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.arc(event.x, event.y, event.radius + 8, -Math.PI/2, -Math.PI/2 + (1 - timeProgress) * Math.PI * 2);
+                ctx.stroke();
+                
+                if (timeLeft <= 0) {
+                    this.currentEvent = null;
+                }
+            }
+            
+            drawGameText() {
+                if (this.gameText.alpha > 0) {
+                    const ctx = this.ctx;
+                    ctx.save();
+                    ctx.globalAlpha = this.gameText.alpha;
+                    
+                    // 鏂囧瓧鑳屾櫙
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(this.gameText.x - 200, this.gameText.y - 25, 400, 50);
+                    
+                    // 鏂囧瓧
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 24px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(this.gameText.text, this.gameText.x, this.gameText.y + 5);
+                    
+                    ctx.restore();
+                }
+            }
+            
+            drawUI() {
+                const ctx = this.ctx;
+                
+                // 褰撳墠闃舵
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 28px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(this.stageNames[this.stage], 450, 40);
+                
+                // 杩涘害鏉?
+                const progress = this.gameTime / 100000;
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(50, 60, 800, 15);
+                ctx.fillStyle = '#4ecdc4';
+                ctx.fillRect(50, 60, 800 * progress, 15);
+                
+                // 鏃堕棿鍜屽垎鏁?
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(`鏃堕棿: ${Math.floor((100000 - this.gameTime) / 1000)}绉抈, 50, 100);
+                ctx.textAlign = 'right';
+                ctx.fillText(`鍒嗘暟: ${this.score}`, 850, 100);
+                
+                // 浜嬩欢杩涘害鏄剧ず锛堣皟璇曚俊鎭級
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#cccccc';
+                const currentStageEvents = this.lifeEvents[this.stage] || [];
+                const stageProgress = this.stageEventIndex[this.stage];
+                ctx.fillText(`${this.stageNames[this.stage]}浜嬩欢: ${Math.min(stageProgress, currentStageEvents.length)}/${currentStageEvents.length}`, 50, 130);
+                
+                ctx.textAlign = 'right';
+                ctx.fillText(`鎬诲畬鎴? ${this.completedEvents.size}`, 850, 130);
+            }
+            
+            endGame() {
+                this.isRunning = false;
+                this.gameEnded = true;
+                
+                const ctx = this.ctx;
+                ctx.fillStyle = 'rgba(0,0,0,0.95)';
+                ctx.fillRect(0, 0, 900, 700);
+                
+                // 鏍囬
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 36px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('浜虹敓鏃呯▼缁撴潫', 450, 150);
+                
+                // 鍒嗘暟
+                ctx.font = 'bold 28px Arial';
+                ctx.fillStyle = '#4ecdc4';
+                ctx.fillText(`浣撻獙鍒扮殑浜虹敓鐗囨: ${this.score}涓猔, 450, 200);
+                
+                // 鍝茬悊鎬ц瘎浠锋枃瀛?
+                let philosophicalText = '';
+                let questionText = '';
+                
+                if (this.score >= 120) {
+                    philosophicalText = '涓板瘜鐨勪汉鐢熶綋楠?;
+                    questionText = '浣犳槸鍚︾湡姝ｆ劅鍙楀埌浜嗘瘡涓€涓灛闂寸殑鎰忎箟锛?;
+                } else if (this.score >= 90) {
+                    philosophicalText = '鍏呭疄鐨勪汉鐢熷巻绋?;
+                    questionText = '鍦ㄨ拷姹傚畬缇庣殑璺笂锛屼綘鏄惁閿欒繃浜嗘部閫旂殑椋庢櫙锛?;
+                } else if (this.score >= 60) {
+                    philosophicalText = '骞宠　鐨勪汉鐢熻妭濂?;
+                    questionText = '蹇欑涓庨棽鏆囦箣闂达紝鍝竴涓洿鎺ヨ繎鐪熷疄鐨勪綘锛?;
+                } else if (this.score >= 30) {
+                    philosophicalText = '鍖嗗繖鐨勪汉鐢熸浼?;
+                    questionText = '鍦ㄥ揩鑺傚鐨勭敓娲讳腑锛屼綘杩樿寰楁渶鍒濈殑姊︽兂鍚楋紵';
+                } else {
+                    philosophicalText = '椋為€濈殑浜虹敓鏃跺厜';
+                    questionText = '鏃堕棿閮藉幓鍝簡锛熶綘鏄惁杩樻潵寰楀強閲嶆柊閫夋嫨锛?;
+                }
+                
+                // 璇勪环鏍囬
+                ctx.font = 'bold 24px Arial';
+                ctx.fillStyle = '#ffe66d';
+                ctx.fillText(philosophicalText, 450, 260);
+                
+                // 鍝茬悊闂
+                ctx.font = '20px Arial';
+                ctx.fillStyle = '#cccccc';
+                ctx.fillText(questionText, 450, 310);
+                
+                // 娣卞害鎬濊€冩枃瀛?
+                ctx.font = '18px Arial';
+                ctx.fillStyle = '#999999';
+                ctx.fillText('浜虹敓涓嶆槸涓€鍦虹珵璧涳紝鑰屾槸涓€娆′綋楠?, 450, 360);
+                ctx.fillText('姣忎竴涓敊杩囩殑鐬棿锛岄兘鏄敓鍛戒腑鏃犳硶閲嶆潵鐨勭弽璐?, 450, 385);
+                ctx.fillText('涔熻锛屾參涓嬫潵鎵嶈兘鐪熸鎰熷彈鐢熸椿鐨勭編濂?, 450, 410);
+                
+                // 鏈€缁堟€濊€?
+                ctx.font = 'bold 20px Arial';
+                ctx.fillStyle = '#ff9ff3';
+                ctx.fillText('濡傛灉閲嶆柊鏉ヨ繃锛屼綘浼氬浣曢€夋嫨锛?, 450, 460);
+                
+                // 閲嶆柊寮€濮嬫寜閽?
+                ctx.fillStyle = '#4ecdc4';
+                ctx.fillRect(350, 550, 200, 50);
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(350, 550, 200, 50);
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 24px Arial';
+                ctx.fillText('閲嶆柊浣撻獙浜虹敓', 450, 580);
+                
+                // 鏇存柊鐘舵€佹枃瀛?
+                this.status.textContent = `浜虹敓浣撻獙缁撴潫 - ${philosophicalText} (${this.score}涓墖娈?`;
+            }
+            
+            restartGame() {
+                console.log('Restarting game...');
+                this.gameEnded = false;
+                this.isRunning = false;
+                
+                // 閲嶇疆鎵€鏈夋父鎴忕姸鎬?
+                this.gameTime = 0;
+                this.score = 0;
+                this.stage = 0;
+                this.lastEventTime = 0;
+                this.currentEvent = null;
+                
+                // 閲嶇疆浜嬩欢杩涘害
+                this.stageEventIndex = [0, 0, 0, 0, 0];
+                this.completedEvents.clear();
+                
+                // 閲嶇疆瑙掕壊鐘舵€?
+                this.character = {
+                    x: 450,
+                    y: 400,
+                    targetX: 450,
+                    targetY: 400,
+                    size: 45,
+                    animation: 'idle',
+                    emotion: 'neutral',
+                    isMoving: false,
+                    animationFrame: 0,
+                    posture: 'crawling',
+                    specialAnimation: null,
+                    specialAnimationTime: 0
+                };
+                
+                // 閲嶇疆鍦烘櫙鍏冪礌
+                this.sceneElements = [];
+                this.temporaryElements = [];
+                
+                // 閲嶇疆娓告垙鏂囧瓧
+                this.gameText = {
+                    text: '',
+                    x: 450,
+                    y: 100,
+                    alpha: 0,
+                    fadeTime: 0
+                };
+                
+                // 閲嶇疆鍑虹敓鍔ㄧ敾
+                this.birthAnimation.active = false;
+                this.birthAnimation.babyY = -100;
+                this.birthAnimation.speed = 0;
+                this.birthAnimation.bounces = 0;
+                this.birthAnimation.phase = 'falling';
+                this.birthAnimation.sparkles = [];
+                this.birthAnimation.time = 0;
+                
+                // 鏄剧ず寮€濮嬬晫闈?
+                this.showStartScreen();
+                this.status.textContent = '娓告垙宸查噸缃?- 鐐瑰嚮寮€濮嬫柊鐨勪汉鐢熸梾绋嬶紒';
+            }
+            
+            showError(message) {
+                this.status.textContent = message;
+                this.status.style.color = '#ff6b6b';
+            }
+        }
+        
+        // 椤甸潰鍔犺浇瀹屾垚鍚庡垵濮嬪寲
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, creating enhanced game...');
+            try {
+                const game = new EnhancedGame();
+                console.log('Enhanced game created successfully');
+            } catch (error) {
+                console.error('Failed to create enhanced game:', error);
+                document.getElementById('status').textContent = '娓告垙鍒涘缓澶辫触: ' + error.message;
+                document.getElementById('status').style.color = '#ff6b6b';
+            }
+        });
+    </script>
+</body>
+</html>
