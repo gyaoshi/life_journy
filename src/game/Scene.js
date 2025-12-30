@@ -12,36 +12,36 @@ class Scene {
             baby: {
                 background: '#ffb3ba',
                 elements: [
-                    { type: 'crib', x: 0.7, y: 0.6, size: 60 },
-                    { type: 'toys', x: 0.3, y: 0.8, size: 30 }
+                    { type: 'crib', x: 0.7, y: 0.6, size: 120 },
+                    { type: 'toys', x: 0.3, y: 0.8, size: 60 }
                 ]
             },
             child: {
                 background: '#87ceeb',
                 elements: [
-                    { type: 'playground', x: 0.2, y: 0.7, size: 80 },
-                    { type: 'school', x: 0.8, y: 0.5, size: 70 }
+                    { type: 'playground', x: 0.2, y: 0.7, size: 160 },
+                    { type: 'school', x: 0.8, y: 0.5, size: 140 }
                 ]
             },
             teen: {
                 background: '#90ee90',
                 elements: [
-                    { type: 'classroom', x: 0.7, y: 0.6, size: 90 },
-                    { type: 'friends', x: 0.3, y: 0.7, size: 40 }
+                    { type: 'classroom', x: 0.7, y: 0.6, size: 180 },
+                    { type: 'friends', x: 0.3, y: 0.7, size: 80 }
                 ]
             },
             adult: {
                 background: '#ffff99',
                 elements: [
-                    { type: 'office', x: 0.2, y: 0.5, size: 100 },
-                    { type: 'house', x: 0.8, y: 0.7, size: 80 }
+                    { type: 'office', x: 0.2, y: 0.5, size: 200 },
+                    { type: 'house', x: 0.8, y: 0.7, size: 160 }
                 ]
             },
             elder: {
                 background: '#deb887',
                 elements: [
-                    { type: 'garden', x: 0.3, y: 0.8, size: 70 },
-                    { type: 'chair', x: 0.7, y: 0.6, size: 50 }
+                    { type: 'garden', x: 0.3, y: 0.8, size: 140 },
+                    { type: 'chair', x: 0.7, y: 0.6, size: 100 }
                 ]
             }
         };
@@ -89,20 +89,6 @@ class Scene {
         
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        // 添加一些装饰点 - 更淡
-        ctx.fillStyle = this.lightenColor(color, 0.8);
-        ctx.globalAlpha = 0.3;
-        for (let i = 0; i < 15; i++) {
-            const x = Math.random() * this.canvas.width;
-            const y = Math.random() * this.canvas.height;
-            const size = Math.random() * 2 + 1;
-            
-            ctx.beginPath();
-            ctx.arc(x, y, size, 0, Math.PI * 2);
-            ctx.fill();
-        }
-        ctx.globalAlpha = 1;
     }
     
     /**

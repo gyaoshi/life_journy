@@ -11,7 +11,7 @@ class Character {
         this.y = canvas.height / 2;
         this.targetX = this.x;
         this.targetY = this.y;
-        this.size = 40;
+        this.size = 80; // 放大2倍
         this.stage = 'baby';
         this.animation = 'idle';
         this.animationFrame = 0;
@@ -62,13 +62,17 @@ class Character {
             const dy = this.targetY - this.y;
             const distance = Math.sqrt(dx * dx + dy * dy);
             
-            if (distance > 3) {
-                this.x += dx * 0.08;
-                this.y += dy * 0.08;
+            if (distance > 1) {
+                // 增加移动速度，确保更快到达目标位置
+                this.x += dx * 0.12;
+                this.y += dy * 0.12;
                 if (this.animation === 'idle') {
                     this.animation = 'walking';
                 }
             } else {
+                // 精确到达目标位置
+                this.x = this.targetX;
+                this.y = this.targetY;
                 this.isMoving = false;
                 if (this.animation === 'walking') {
                     this.animation = 'idle';

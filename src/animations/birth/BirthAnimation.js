@@ -4,6 +4,8 @@
  * 包含生命诞生光芒和温暖特效
  */
 
+import { CharacterRenderer } from '../../graphics/CharacterRenderer';
+
 export class BirthAnimation {
     constructor(context, config = {}) {
         this.ctx = context;
@@ -33,6 +35,9 @@ export class BirthAnimation {
         this.cosmicLights = [];
         this.lifeEnergyParticles = [];
         this.warmthAura = { radius: 0, intensity: 0 };
+        
+        // 初始化角色渲染器
+        this.characterRenderer = new CharacterRenderer(context);
         
         this.init();
     }
@@ -388,93 +393,26 @@ export class BirthAnimation {
     renderCharacter(ctx) {
         ctx.save();
         
-        ctx.globalAlpha = this.characterOpacity;
-        ctx.translate(this.characterPosition.x, this.characterPosition.y);
-        ctx.scale(this.characterScale, this.characterScale);
+        // 保存原始透明度
+        const originalAlpha = ctx.globalAlpha;
         
-        // 绘制婴儿形态
-        this.drawBabyCharacter(ctx);
+        // 应用角色透明度
+        ctx.globalAlpha = this.characterOpacity;
+        
+        // 使用CharacterRenderer渲染婴儿角色
+        this.characterRenderer.renderCharacter(
+            'baby', 
+            { 
+                x: this.characterPosition.x, 
+                y: this.characterPosition.y 
+            }, 
+            'happy'
+        );
+        
+        // 恢复原始透明度
+        ctx.globalAlpha = originalAlpha;
         
         ctx.restore();
-    }
-    
-    /**
-     * 绘制婴儿角色
-     */
-    drawBabyCharacter(ctx) {
-        // 婴儿身体（圆润的椭圆）
-        ctx.fillStyle = '#FFE4C4'; // 肤色
-        ctx.strokeStyle = '#D2B48C';
-        ctx.lineWidth = 2;
-        
-        // 身体
-        ctx.beginPath();
-        ctx.ellipse(0, 10, 15, 20, 0, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.stroke();
-        
-        // 头部
-        ctx.beginPath();
-        ctx.arc(0, -15, 18, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.stroke();
-        
-        // 眼睛
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.arc(-6, -18, 4, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(6, -18, 4, 0, 2 * Math.PI);
-        ctx.fill();
-        
-        // 瞳孔
-        ctx.fillStyle = '#4169E1';
-        ctx.beginPath();
-        ctx.arc(-6, -18, 2, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(6, -18, 2, 0, 2 * Math.PI);
-        ctx.fill();
-        
-        // 嘴巴（微笑）
-        ctx.strokeStyle = '#8B4513';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(0, -10, 6, 0.2 * Math.PI, 0.8 * Math.PI);
-        ctx.stroke();
-        
-        // 头发
-        ctx.fillStyle = '#8B4513';
-        ctx.beginPath();
-        ctx.arc(0, -25, 12, 0, Math.PI);
-        ctx.fill();
-        
-        // 手臂
-        ctx.strokeStyle = '#FFE4C4';
-        ctx.lineWidth = 6;
-        ctx.lineCap = 'round';
-        
-        ctx.beginPath();
-        ctx.moveTo(-12, 5);
-        ctx.lineTo(-20, 15);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(12, 5);
-        ctx.lineTo(20, 15);
-        ctx.stroke();
-        
-        // 腿
-        ctx.beginPath();
-        ctx.moveTo(-8, 25);
-        ctx.lineTo(-8, 35);
-        ctx.stroke();
-        
-        ctx.beginPath();
-        ctx.moveTo(8, 25);
-        ctx.lineTo(8, 35);
-        ctx.stroke();
     }
     
     /**

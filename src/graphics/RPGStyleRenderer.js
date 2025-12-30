@@ -73,8 +73,8 @@ class RPGStyleRenderer {
         this.ctx.fillStyle = this.palette.grassMedium;
         this.ctx.fillRect(x, y, size, size);
         
-        // 添加随机变化
-        const variation = Math.random();
+        // 添加固定变化（避免闪烁）
+        const variation = (x + y) % 100 / 100;
         if (variation < 0.3) {
             this.ctx.fillStyle = this.palette.grassLight;
             this.ctx.fillRect(x + size * 0.2, y + size * 0.2, size * 0.6, size * 0.6);
@@ -83,11 +83,11 @@ class RPGStyleRenderer {
             this.ctx.fillRect(x + size * 0.1, y + size * 0.1, size * 0.8, size * 0.8);
         }
         
-        // 添加草地纹理点
+        // 添加固定草地纹理点
         for (let i = 0; i < 3; i++) {
-            const px = x + Math.random() * size;
-            const py = y + Math.random() * size;
-            this.ctx.fillStyle = Math.random() < 0.5 ? this.palette.grassLight : this.palette.grassDark;
+            const px = x + (i * 5) % size;
+            const py = y + (i * 7) % size;
+            this.ctx.fillStyle = (x + y + i) % 2 === 0 ? this.palette.grassLight : this.palette.grassDark;
             this.ctx.fillRect(px, py, 2, 2);
         }
     }
@@ -233,11 +233,11 @@ class RPGStyleRenderer {
      */
     getCharacterSizeMultiplier(stageId) {
         const multipliers = {
-            'baby': 0.6,
-            'child': 0.8,
-            'teen': 0.9,
-            'adult': 1.0,
-            'elder': 0.95
+            'baby': 1.2,  // 放大2倍
+            'child': 1.6,  // 放大2倍
+            'teen': 1.8,  // 放大2倍
+            'adult': 2.0,  // 放大2倍
+            'elder': 1.9   // 放大2倍
         };
         return multipliers[stageId] || 1.0;
     }

@@ -33,7 +33,7 @@ class SimpleGame {
         
         // 事件生成
         this.lastEventTime = 0;
-        this.eventInterval = 2000; // 2秒生成一个事件（更频繁）
+        this.eventInterval = 1000; // 缩短为1秒生成一个事件，确保有持续的可交互元素
         
         console.log('SimpleGame created');
     }
@@ -87,10 +87,8 @@ class SimpleGame {
                     this.character.performAction(event.story.action, 2000);
                     this.character.setEmotion(event.story.emotion, 3000);
                     
-                    // 角色移动到事件位置附近
-                    const targetX = event.x + (Math.random() - 0.5) * 100;
-                    const targetY = event.y + 50;
-                    this.character.moveTo(targetX, targetY);
+                    // 角色精确移动到事件位置
+                    this.character.moveTo(event.x, event.y);
                 } else {
                     this.character.performAction('dancing', 1500);
                     this.character.setEmotion('happy', 2000);
@@ -117,10 +115,17 @@ class SimpleGame {
             }, 500);
         });
         
-        // 点击开始游戏
+        // 点击开始游戏 - 只响应按钮点击
         this.canvas.addEventListener('click', (e) => {
             if (!this.isRunning) {
-                this.startGame();
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                // 检查是否点击了开始按钮
+                if (this.isPointInButton(x, y, this.startButton)) {
+                    this.startGame();
+                }
             }
         });
     }
@@ -158,21 +163,61 @@ class SimpleGame {
         this.ctx.fillStyle = '#cccccc';
         this.ctx.fillText('100秒体验完整人生', this.canvas.width / 2, this.canvas.height / 2 - 60);
         
-        // 开始提示
-        this.ctx.font = '24px Arial';
-        this.ctx.fillStyle = '#4ecdc4';
-        this.ctx.fillText('点击屏幕开始游戏', this.canvas.width / 2, this.canvas.height / 2);
-        
         // 预览角色
         if (this.character) {
-            this.character.setPosition(this.canvas.width / 2, this.canvas.height / 2 + 80);
+            this.character.setPosition(this.canvas.width / 2, this.canvas.height / 2 + 50);
             this.character.render();
         }
+        
+        // 绘制开始按钮
+        this.drawStartButton();
         
         // 说明
         this.ctx.font = '16px Arial';
         this.ctx.fillStyle = '#999999';
-        this.ctx.fillText('完成交互任务获得分数', this.canvas.width / 2, this.canvas.height / 2 + 140);
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('完成交互任务获得分数', this.canvas.width / 2, this.canvas.height / 2 + 160);
+    }
+    
+    /**
+     * 绘制开始按钮
+     */
+    drawStartButton() {
+        const buttonWidth = 200;
+        const buttonHeight = 60;
+        const buttonX = (this.canvas.width - buttonWidth) / 2;
+        const buttonY = this.canvas.height / 2 + 100;
+        
+        // 保存按钮位置和尺寸，用于点击检测
+        this.startButton = {
+            x: buttonX,
+            y: buttonY,
+            width: buttonWidth,
+            height: buttonHeight
+        };
+        
+        // 绘制按钮背景
+        this.ctx.fillStyle = '#4ecdc4';
+        this.ctx.fillRect(buttonX, buttonY, buttonWidth, buttonHeight);
+        
+        // 绘制按钮边框
+        this.ctx.strokeStyle = '#44a08d';
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
+        
+        // 绘制按钮文字
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.font = 'bold 24px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('开始游戏', this.canvas.width / 2, buttonY + buttonHeight / 2 + 8);
+    }
+    
+    /**
+     * 检查点击是否在按钮内
+     */
+    isPointInButton(x, y, button) {
+        return x >= button.x && x <= button.x + button.width &&
+               y >= button.y && y <= button.y + button.height;
     }
     
     /**

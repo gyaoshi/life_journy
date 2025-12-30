@@ -26,6 +26,10 @@ class ResponsiveManager {
         this.preferredOrientation = 'landscape';
         this.orientationLocked = false;
         
+        // 上次尺寸记录，用于减少不必要的布局更新
+        this.lastWidth = window.innerWidth;
+        this.lastHeight = window.innerHeight;
+        
         // 事件监听器
         this.resizeHandler = this.handleResize.bind(this);
         this.orientationHandler = this.handleOrientationChange.bind(this);
@@ -177,11 +181,19 @@ class ResponsiveManager {
      * 处理窗口大小变化
      */
     handleResize() {
-        // 防抖处理
+        // 防抖处理 - 增加时间到200ms，减少抖动
         clearTimeout(this.resizeTimeout);
         this.resizeTimeout = setTimeout(() => {
-            this.updateLayout();
-        }, 100);
+            // 仅在尺寸变化明显时更新布局
+            const currentWidth = window.innerWidth;
+            const currentHeight = window.innerHeight;
+            
+            if (Math.abs(currentWidth - this.lastWidth) > 50 || Math.abs(currentHeight - this.lastHeight) > 50) {
+                this.updateLayout();
+                this.lastWidth = currentWidth;
+                this.lastHeight = currentHeight;
+            }
+        }, 200);
     }
     
     /**

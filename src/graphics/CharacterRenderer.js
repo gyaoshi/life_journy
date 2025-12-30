@@ -33,17 +33,17 @@ class CharacterRenderer {
     initializeCharacterForms() {
         // 婴儿形态 - 超级可爱、圆润、天真无邪
         this.characterAssets.set('baby', {
-            size: { width: 32, height: 32 },
+            size: { width: 192, height: 192 },
             proportions: { 
                 head: 0.6,     // 婴儿头部超大，萌萌哒
                 body: 0.4,
                 limbs: 0.25    // 超短小的四肢
             },
             bodyShape: {
-                headRadius: 16,
-                bodyWidth: 12,
-                bodyHeight: 16,
-                limbThickness: 4
+                headRadius: 96,
+                bodyWidth: 72,
+                bodyHeight: 96,
+                limbThickness: 24
             },
             features: ['huge_sparkly_eyes', 'tiny_button_nose', 'chubby_cheeks', 'innocent_smile'],
             colors: { 
@@ -56,7 +56,7 @@ class CharacterRenderer {
             posture: 'sitting_cute',
             characteristics: ['adorable', 'innocent', 'curious', 'tiny'],
             rpgStyle: {
-                pixelSize: 2,
+                pixelSize: 6,
                 cuteness: 'maximum',
                 roundness: 'extreme'
             }
@@ -64,17 +64,17 @@ class CharacterRenderer {
 
         // 儿童形态 - 活泼可爱、精力充沛、充满好奇
         this.characterAssets.set('child', {
-            size: { width: 40, height: 48 },
+            size: { width: 240, height: 288 },
             proportions: { 
                 head: 0.45,    // 仍然较大的头部
                 body: 0.55,
                 limbs: 0.35
             },
             bodyShape: {
-                headRadius: 14,
-                bodyWidth: 16,
-                bodyHeight: 28,
-                limbThickness: 6
+                headRadius: 84,
+                bodyWidth: 96,
+                bodyHeight: 168,
+                limbThickness: 36
             },
             features: ['bright_sparkling_eyes', 'cheerful_smile', 'rosy_cheeks', 'messy_hair'],
             colors: { 
@@ -87,7 +87,7 @@ class CharacterRenderer {
             posture: 'bouncy_standing',
             characteristics: ['energetic', 'playful', 'curious', 'bouncy'],
             rpgStyle: {
-                pixelSize: 2,
+                pixelSize: 6,
                 cuteness: 'high',
                 animation: 'bouncy'
             }
@@ -95,17 +95,17 @@ class CharacterRenderer {
 
         // 青少年形态 - 可爱中带着青春活力
         this.characterAssets.set('teen', {
-            size: { width: 44, height: 56 },
+            size: { width: 264, height: 336 },
             proportions: { 
                 head: 0.35, 
                 body: 0.65,
                 limbs: 0.45
             },
             bodyShape: {
-                headRadius: 12,
-                bodyWidth: 18,
-                bodyHeight: 38,
-                limbThickness: 8
+                headRadius: 24,
+                bodyWidth: 36,
+                bodyHeight: 76,
+                limbThickness: 16
             },
             features: ['expressive_eyes', 'youthful_smile', 'stylish_hair', 'confident_posture'],
             colors: { 
@@ -126,17 +126,17 @@ class CharacterRenderer {
 
         // 成人形态 - 成熟可爱、温和稳重
         this.characterAssets.set('adult', {
-            size: { width: 48, height: 64 },
+            size: { width: 288, height: 360 },
             proportions: { 
                 head: 0.3, 
                 body: 0.7,
                 limbs: 0.5
             },
             bodyShape: {
-                headRadius: 11,
-                bodyWidth: 20,
-                bodyHeight: 44,
-                limbThickness: 10
+                headRadius: 44,
+                bodyWidth: 80,
+                bodyHeight: 176,
+                limbThickness: 40
             },
             features: ['kind_eyes', 'gentle_smile', 'mature_features', 'warm_expression'],
             colors: { 
@@ -157,17 +157,17 @@ class CharacterRenderer {
 
         // 老人形态 - 慈祥可爱、智慧温和
         this.characterAssets.set('elder', {
-            size: { width: 44, height: 60 },
+            size: { width: 264, height: 336 },
             proportions: { 
                 head: 0.35,    // 略大头部显示智慧
                 body: 0.65,
                 limbs: 0.4     
             },
             bodyShape: {
-                headRadius: 13,
-                bodyWidth: 18,
-                bodyHeight: 40,
-                limbThickness: 8
+                headRadius: 52,
+                bodyWidth: 72,
+                bodyHeight: 160,
+                limbThickness: 32
             },
             features: ['wise_twinkling_eyes', 'gentle_smile', 'silver_hair', 'kind_wrinkles'],
             colors: { 

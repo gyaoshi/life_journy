@@ -1005,15 +1005,16 @@ class GameEngine {
      * 处理输入事件
      */
     handleInput(inputEvent) {
-        // 如果有响应式管理器，转换坐标
-        if (this.responsiveManager && inputEvent.x !== undefined && inputEvent.y !== undefined) {
-            const originalCoords = this.responsiveManager.getOriginalCoordinates(inputEvent.x, inputEvent.y);
-            inputEvent.x = originalCoords.x;
-            inputEvent.y = originalCoords.y;
-        }
+        // 直接使用原始点击坐标，不进行转换
+        // 修复移动到点击位置有偏差的问题
         
         if (this.eventSystem) {
             this.eventSystem.processInteraction(inputEvent);
+        }
+        
+        // 处理角色移动
+        if (this.movementController && inputEvent.type === 'click') {
+            this.movementController.moveToPosition(inputEvent.x, inputEvent.y);
         }
     }
 }
